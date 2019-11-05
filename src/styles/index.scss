@@ -1,6 +1,113 @@
-$body-color: slateblue;
-
+// global
 body {
-  color: $body-color;
-  font-family: sans-serif;
+    background-color: white;
+    color: black;
+    font-family: sans-serif;
+}
+
+h3 {
+    color: black;
+    font-size: 26px;
+    font-weight: bold;
+    margin-top: 0;
+}
+
+p {
+    color: #a7aaad;
+    font-size: 13px;  
+    margin-top: 0;
+    font-weight: 500; 
+}
+
+//// sing in
+
+#root_container {
+    text-align: center;
+    width: 100%;  
+    /* border: 1px solid red; */
+}
+
+#root_container .form_container {    
+    width: 300px;
+    margin-top: 140px;  
+    display: inline-block;    
+}
+
+#root_container .form_container .logo {    
+    width: 130px;
+    height: 130px;
+    margin-bottom: 40px;
+}
+
+#root_container p.signin_descr {
+    width: 220px;    
+    display: inline-block;  
+}
+
+#root_container .form_input input {
+    width: 280px;
+    height: 26px;    
+    padding: 10px;
+    display: inline-block;  
+    margin-top: 15px;
+    outline: none;
+    border: 1px solid #e0e1e5;
+    border-radius: 10px;    
+}
+
+// #root_container .form_input input:focus:required:invalid  {
+//     border: 1px solid red;
+// }
+
+#root_container .form_input input:focus {
+    border: 2px solid #4ea4f6;
+    border-radius: 10px;    
+}
+
+#root_container .form_container .keep_me_in {
+    float: left;
+    margin-top: 15px;    
+}
+
+#root_container .form_submit input{
+    display: inline-block;  
+    margin-top: 15px;
+    width: 300px;    
+    border: none;
+    border-radius: 10px;    
+    background-color: #5d98f2;
+    color: white;
+    padding: 12px;    
+    font-size: 12px;
+    cursor: pointer;
+}
+
+// checkbox
+#root_container .keep_me_in input[type="checkbox"] {
+    visibility: hidden;        
+}
+
+#root_container .keep_me_in label {
+    cursor: pointer;
+    color: black;      
+}
+
+#root_container .keep_me_in input[type="checkbox"] + label:before {
+    border-radius: 3px;    
+    content: "\00a0";
+    display: inline-block;
+    font: 16px/1em sans-serif;
+    height: 16px;
+    margin: 0 .25em 0 0;
+    padding: 0;
+    vertical-align: top;
+    width: 16px;
+    background: #4ea4f6;
+    color: white;
+    margin-right: 20px;
+}
+
+#root_container .keep_me_in input[type="checkbox"]:checked + label:before {    
+    content: "\2713";
+    text-align: center;    
 }
