@@ -1,5 +1,13 @@
+import AuthService from "../auth/authService";
+
 let SigninComponent = {    
+    // preRender: async () => {
+    //     console.log('signin pre render');
+    // },
     render: async () => {
+
+        console.log('signin render');
+
         let country = 'RU';
         let phone = '+79185177860';
 
@@ -29,10 +37,19 @@ let SigninComponent = {
         `;
     }    
     , after_render: async () => {
+        console.log('signin after render');
+
         document.getElementById("btnSubmitSigninForm").addEventListener ("click",  () => {
             let country = document.getElementById("tboxContriesList").value;
             let phone = document.getElementById("tboxPhoneNumber").value;
-            alert(`country ${country}, phone ${phone}`);
+                        
+            AuthService.authorize().then((userData) => {
+                if (userData.isAuthorized) {                    
+                    location = '/#/';                    
+                }
+                else alert('Access Denied');
+            });
+            
             return false;
         });
     }
