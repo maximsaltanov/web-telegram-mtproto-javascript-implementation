@@ -3,7 +3,7 @@
 import '../styles/index.scss';
 import SigninComponent     from '../partials/signIn';
 import HomeComponent     from '../partials/home';
-import Utils        from '../lib/Utils';
+import Utils        from '../lib/utils';
 import Error404Component from '../partials/error404';
 
 // List of supported routes. Any url other than these routes will throw a 404 error

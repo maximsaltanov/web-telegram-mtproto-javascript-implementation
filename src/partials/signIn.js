@@ -40,15 +40,20 @@ let SigninComponent = {
         console.log('signin after render');
 
         document.getElementById("btnSubmitSigninForm").addEventListener ("click",  () => {
-            let country = document.getElementById("tboxContriesList").value;
-            let phone = document.getElementById("tboxPhoneNumber").value;
-                        
-            AuthService.authorize().then((userData) => {
-                if (userData.isAuthorized) {                    
-                    location = '/#/';                    
-                }
-                else alert('Access Denied');
-            });
+
+            AuthService.initPhoneCountry();            
+
+            // let country = document.getElementById("tboxContriesList").value;
+            // let phone = document.getElementById("tboxPhoneNumber").value;
+            
+            // AuthService.sendCode(country, phone);
+
+            // AuthService.authorize().then((userData) => {
+            //     if (userData.isAuthorized) {                    
+            //         location = '/#/';                    
+            //     }
+            //     else alert('Access Denied');
+            // });
             
             return false;
         });

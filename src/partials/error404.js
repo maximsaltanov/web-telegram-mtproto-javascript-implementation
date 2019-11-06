@@ -1,6 +1,6 @@
 let HomeComponent = {
 
-    preRender: () => {
+    preRender: async () => {
         
     },
     render: async () => {
