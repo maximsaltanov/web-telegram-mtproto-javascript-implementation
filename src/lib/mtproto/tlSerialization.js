@@ -1,5 +1,6 @@
 import bigint from './bin_utils';
 import { bigStringInt, intToUint } from './bin_utils';
+import Config from '../config';
 
 export default function TLSerialization(options) {
     options = options || {};

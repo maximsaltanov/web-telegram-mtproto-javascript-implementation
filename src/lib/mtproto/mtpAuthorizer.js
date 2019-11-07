@@ -1,8 +1,11 @@
 import MtpDcConfigurator from './mtpDcConfigurator';
 import MtpRsaKeysManager from './mtpRsaKeysManager';
 import TLSerialization from './tlSerialization';
+import TLDeserialization from './tlDeserialization';
 import MtpTimeManager from './mtpTimeManager';
 import CryptoWorker from './cryptoWorker';
+import axios from 'axios';
+
 import { nextRandomInt } from './bin_utils';
 import $q from 'q';
 
@@ -46,26 +49,23 @@ export default function MtpAuthorizer() {
 
         try {
 
+            var httpClient = axios.create();
+            delete httpClient.defaults.headers.post['Content-Type'];
+            delete httpClient.defaults.headers.common['Accept'];
+
+            requestPromise = httpClient.post(url, requestData, {
+                responseType: 'arraybuffer',
+                transformRequest: null
+            });
+
             // // requestPromise = $http.post(url, requestData, {
             // //     responseType: 'arraybuffer',
             // //     transformRequest: null
             // // });
-                        
-            requestPromise = fetch(url, {
-                method: 'POST',
-                // headers: {
-                //     'Content-Type' : '',
-                //     'Accept' : '',
-                //     'Response-Type': 'arraybuffer'
-                // },
-                mode: 'no-cors', // no-cors, cors, *same-origin
-                //cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
-                //credentials: 'same-origin', // include, *same-origin, omit                
-                body: JSON.stringify(requestData)
-            });
-
+                                    
         } catch (e) {
-            requestPromise = $q.reject(angular.extend(baseError, { originalError: e }));
+            ////requestPromise = $q.reject(angular.extend(baseError, { originalError: e }));
+            requestPromise = $q.reject(e);
         }
 
         return requestPromise.then(
@@ -82,14 +82,15 @@ export default function MtpAuthorizer() {
 
                     console.log(`auth_key_id: ${auth_key_id}, msg_id: ${msg_id}, msg_len: ${msg_len}`);
                 } catch (e) {
-                    return $q.reject(angular.extend(baseError, { originalError: e }));
+                    ////return $q.reject(angular.extend(baseError, { originalError: e }));
+                    return $q.reject(e);
                 }
 
                 return deserializer;
             },
             function (error) {
                 if (!error.message && !error.type) {
-                    error = angular.extend(baseError, { originalError: error });
+                    //error = angular.extend(baseError, { originalError: error });                    
                 }
                 return $q.reject(error);
             }
@@ -101,7 +102,7 @@ export default function MtpAuthorizer() {
 
         var request = new TLSerialization({ mtproto: true });
 
-        // request.storeMethod('req_pq', { nonce: auth.nonce });
+        request.storeMethod('req_pq', { nonce: auth.nonce });
 
         //console.log(dT(), 'Send req_pq', bytesToHex(auth.nonce));
 
