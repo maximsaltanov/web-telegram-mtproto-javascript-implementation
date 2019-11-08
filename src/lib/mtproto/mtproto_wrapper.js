@@ -1,10 +1,13 @@
 // import Config from './config';
 import MtpAuthorizer from './mtpAuthorizer';
-// import { MtpNetworkerFactory } from './mtproto';
+
+import { bytesToHex } from './bin_utils';
+
+import { MtpNetworkerFactory } from './mtpNetworkFactory';
 import $q from 'q';
 
 const mtpAuthorizer = new MtpAuthorizer();
-//const mtpNetworkerFactory = new MtpNetworkerFactory();
+const mtpNetworkerFactory = new MtpNetworkerFactory();
 
 export default function MtpApiManager() {
 
@@ -100,16 +103,16 @@ export default function MtpApiManager() {
     // //   ? cachedUploadNetworkers
     // //   : cachedNetworkers;
 
-    // // if (!dcID) {
-    // //   throw new Exception('get Networker without dcID');
-    // // }
+    if (!dcID) {
+      throw new Exception('get Networker without dcID');
+    }
 
-    // // // if (cache[dcID] !== undefined) {
-    // // //   return qSync.when(cache[dcID]);
-    // // // }
+    // if (cache[dcID] !== undefined) {
+    //   return qSync.when(cache[dcID]);
+    // }
 
-    // // var akk = 'dc' + dcID + '_auth_key';
-    // // var ssk = 'dc' + dcID + '_server_salt';
+     var akk = 'dc' + dcID + '_auth_key';
+      var ssk = 'dc' + dcID + '_server_salt';
 
     // // return Storage.get(akk, ssk).then(function (result) {
     // //   if (cache[dcID] !== undefined) {
@@ -135,15 +138,17 @@ export default function MtpApiManager() {
     // //   if (!options.createNetworker) {
     // //     return $q.reject({ type: 'AUTH_KEY_EMPTY', code: 401 });
     // //   }        
+
     return mtpAuthorizer.auth(dcID).then(function (auth) {
       var storeObj = {};
       storeObj[akk] = bytesToHex(auth.authKey);
       storeObj[ssk] = bytesToHex(auth.serverSalt);
       ////Storage.set(storeObj)
-      ////return cache[dcID] = mtpNetworkerFactory.getNetworker(dcID, auth.authKey, auth.serverSalt, options);
+
       console.log('Get networker test');
 
-      return $q.reject(error);
+      return cache[dcID] = mtpNetworkerFactory.getNetworker(dcID, auth.authKey, auth.serverSalt, options);      
+      
     }, function (error) {
       console.log('Get networker error', error, error.stack);
       return $q.reject(error);
@@ -265,7 +270,7 @@ export default function MtpApiManager() {
             }, waitTime * 1000);
           }
           else if (!options.rawError && (error.code == 500 || error.type == 'MSG_WAIT_FAILED')) {
-            var now = tsNow();
+            var now = new Date().getTime();
             if (options.stopTime) {
               if (now >= options.stopTime) {
                 return rejectPromise(error);

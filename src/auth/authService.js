@@ -15,7 +15,7 @@ const AuthService = {
     },
     initPhoneCountry: async () => {        
         mtpApiManager.invokeApi('help.getNearestDc', {}, {dcID: 2, createNetworker: true}).then(function (nearestDcResult) {
-            var resss = nearestDcResult;
+            console.log('nearestDcResult', nearestDcResult);            
         });
     },
     sendCode: async (country, phone) => {        

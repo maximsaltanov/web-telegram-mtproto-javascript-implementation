@@ -1,7 +1,16 @@
 import jsbn from 'jsbn';
 import Rusha from 'rusha';
+import { bpe, str2bigInt, copyInt_, copy_, isZero, add_, rightShift_, greater, 
+  sub_, eGCD_, equalsInt, one, divide_, bigInt2str, powMod } from './vendor/bigint';
+import LongGoog from './vendor/long';
+import { generateSecureRandomBytes } from './vendor/jsbn_combined';
 
-export default function bigint(num) {
+import * as CryptoJSlib from '@goodmind/node-cryptojs-aes';
+const { CryptoJS } = CryptoJSlib;
+
+const long = new LongGoog();
+
+export default function bigint(num) {    
   return new jsbn.BigInteger(num.toString(16), 16);
 }
 
@@ -193,8 +202,8 @@ export function bytesToWords(bytes) {
 
   for (i = 0; i < len; i++) {
     words[i >>> 2] |= bytes[i] << (24 - (i % 4) * 8);
-  }
-
+  }  
+    
   return new CryptoJS.lib.WordArray.init(words, len);
 }
 
@@ -379,7 +388,8 @@ export function addPadding(bytes, blockSize, zeroes) {
         padding[i] = 0;
       }
     } else {
-      (new SecureRandom()).nextBytes(padding);
+      ////(new SecureRandom()).nextBytes(padding);
+      padding = generateSecureRandomBytes(padding);
     }
 
     if (bytes instanceof ArrayBuffer) {
@@ -410,7 +420,11 @@ export function aesEncryptSync(bytes, keyBytes, ivBytes) {
 
 export function aesDecryptSync(encryptedBytes, keyBytes, ivBytes) {
 
-  // console.log(dT(), 'AES decrypt start', encryptedBytes.length)
+var cr = CryptoJS;
+var aes = CryptoJS.AES;
+
+  console.log('AES decrypt start', encryptedBytes.length);
+
   var decryptedWords = CryptoJS.AES.decrypt({ ciphertext: bytesToWords(encryptedBytes) }, bytesToWords(keyBytes), {
     iv: bytesToWords(ivBytes),
     padding: CryptoJS.pad.NoPadding,
@@ -418,15 +432,16 @@ export function aesDecryptSync(encryptedBytes, keyBytes, ivBytes) {
   });
 
   var bytes = bytesFromWords(decryptedWords);
-  // console.log(dT(), 'AES decrypt finish')
+
+  console.log('AES decrypt finish');
 
   return bytes;
 }
 
 export function gzipUncompress(bytes) {
-  // console.log('Gzip uncompress start')
+  console.log('Gzip uncompress start');
   var result = (new Zlib.Gunzip(bytes)).decompress();
-  // console.log('Gzip uncompress finish')
+  console.log('Gzip uncompress finish');
   return result;
 }
 
@@ -440,6 +455,8 @@ export function pqPrimeFactorization(pqBytes) {
 
   // console.log(dT(), 'PQ start', pqBytes, what.toString(16), what.bitLength())
 
+console.log(bpe);
+
   try {
     result = pqPrimeLeemon(str2bigInt(what.toString(16), 16, Math.ceil(64 / bpe) + 1));
   } catch (e) {
@@ -448,8 +465,8 @@ export function pqPrimeFactorization(pqBytes) {
 
   if (result === false && what.bitLength() <= 64) {
     // console.time('PQ long')
-    try {
-      result = pqPrimeLong(goog.math.Long.fromString(what.toString(16), 16));
+    try {      
+      result = pqPrimeLong(long.goog.math.Long.fromString(what.toString(16), 16));
     } catch (e) {
       console.error('Pq long Exception', e);
     }
@@ -484,8 +501,8 @@ export function pqPrimeBigInteger(what) {
       var b = x.clone();
       var c = bigint(q);
 
-      while (!b.equals(BigInteger.ZERO)) {
-        if (!b.and(BigInteger.ONE).equals(BigInteger.ZERO)) {
+      while (!b.equals(jsbn.BigInteger.ZERO)) {
+        if (!b.and(jsbn.BigInteger.ONE).equals(jsbn.BigInteger.ZERO)) {
           c = c.add(a);
           if (c.compareTo(what) > 0) {
             c = c.subtract(what);
@@ -501,14 +518,14 @@ export function pqPrimeBigInteger(what) {
       x = c.clone();
       var z = x.compareTo(y) < 0 ? y.subtract(x) : x.subtract(y);
       g = z.gcd(what);
-      if (!g.equals(BigInteger.ONE)) {
+      if (!g.equals(jsbn.BigInteger.ONE)) {
         break;
       }
       if ((j & (j - 1)) == 0) {
         y = x.clone();
       }
     }
-    if (g.compareTo(BigInteger.ONE) > 0) {
+    if (g.compareTo(jsbn.BigInteger.ONE) > 0) {
       break;
     }
   }
@@ -527,11 +544,11 @@ export function pqPrimeBigInteger(what) {
 }
 
 export function gcdLong(a, b) {
-  while (a.notEquals(goog.math.Long.ZERO) && b.notEquals(goog.math.Long.ZERO)) {
-    while (b.and(goog.math.Long.ONE).equals(goog.math.Long.ZERO)) {
+  while (a.notEquals(long.goog.math.Long.ZERO) && b.notEquals(long.goog.math.Long.ZERO)) {
+    while (b.and(long.goog.math.Long.ONE).equals(long.goog.math.Long.ZERO)) {
       b = b.shiftRight(1);
     }
-    while (a.and(goog.math.Long.ONE).equals(goog.math.Long.ZERO)) {
+    while (a.and(long.goog.math.Long.ONE).equals(long.goog.math.Long.ZERO)) {
       a = a.shiftRight(1);
     }
     if (a.compare(b) > 0) {
@@ -541,7 +558,7 @@ export function gcdLong(a, b) {
     }
   }
 
-  return b.equals(goog.math.Long.ZERO) ? a : b;
+  return b.equals(long.goog.math.Long.ZERO) ? a : b;
 }
 
 export function pqPrimeLong(what) {
@@ -549,8 +566,8 @@ export function pqPrimeLong(what) {
     g;
 
   for (var i = 0; i < 3; i++) {
-    var q = goog.math.Long.fromInt((nextRandomInt(128) & 15) + 17);
-    var x = goog.math.Long.fromInt(nextRandomInt(1000000000) + 1);
+    var q = long.goog.math.Long.fromInt((nextRandomInt(128) & 15) + 17);
+    var x = long.goog.math.Long.fromInt(nextRandomInt(1000000000) + 1);
     var y = x;
     var lim = 1 << (i + 18);
 
@@ -560,8 +577,8 @@ export function pqPrimeLong(what) {
       var b = x;
       var c = q;
 
-      while (b.notEquals(goog.math.Long.ZERO)) {
-        if (b.and(goog.math.Long.ONE).notEquals(goog.math.Long.ZERO)) {
+      while (b.notEquals(long.goog.math.Long.ZERO)) {
+        if (b.and(long.goog.math.Long.ONE).notEquals(long.goog.math.Long.ZERO)) {
           c = c.add(a);
           if (c.compare(what) > 0) {
             c = c.subtract(what);
@@ -579,14 +596,14 @@ export function pqPrimeLong(what) {
       x = c;
       var z = x.compare(y) < 0 ? y.subtract(x) : x.subtract(y);
       g = gcdLong(z, what);
-      if (g.notEquals(goog.math.Long.ONE)) {
+      if (g.notEquals(long.goog.math.Long.ONE)) {
         break;
       }
       if ((j & (j - 1)) == 0) {
         y = x;
       }
     }
-    if (g.compare(goog.math.Long.ONE) > 0) {
+    if (g.compare(long.goog.math.Long.ONE) > 0) {
       break;
     }
   }

@@ -1,4 +1,5 @@
 import bigint from './bin_utils';
+import { uintToInt, gzipUncompress, bytesToArrayBuffer } from './bin_utils';
 import Config from '../config';
 
 export default function TLDeserialization(buffer, options) {

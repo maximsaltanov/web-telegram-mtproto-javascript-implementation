@@ -6,8 +6,14 @@ import MtpTimeManager from './mtpTimeManager';
 import CryptoWorker from './cryptoWorker';
 import axios from 'axios';
 
-import { nextRandomInt } from './bin_utils';
+import {
+    nextRandomInt, bytesCmp, bytesToHex, sha1BytesSync,
+    aesEncryptSync, rsaEncrypt, bytesFromHex,
+    aesDecryptSync, bytesToArrayBuffer, bytesXor
+} from './bin_utils';
 import $q from 'q';
+import jsbn from 'jsbn';
+import { generateSecureRandomBytes } from './vendor/jsbn_combined';
 
 const mtpDcConfigurator = new MtpDcConfigurator();
 const mtpRsaKeysManager = new MtpRsaKeysManager();
@@ -62,7 +68,7 @@ export default function MtpAuthorizer() {
             // //     responseType: 'arraybuffer',
             // //     transformRequest: null
             // // });
-                                    
+
         } catch (e) {
             ////requestPromise = $q.reject(angular.extend(baseError, { originalError: e }));
             requestPromise = $q.reject(e);
@@ -104,7 +110,7 @@ export default function MtpAuthorizer() {
 
         request.storeMethod('req_pq', { nonce: auth.nonce });
 
-        //console.log(dT(), 'Send req_pq', bytesToHex(auth.nonce));
+        console.log('Send req_pq', bytesToHex(auth.nonce));
 
         mtpSendPlainRequest(auth.dcID, request.getBuffer()).then(function (deserializer) {
 
@@ -131,29 +137,25 @@ export default function MtpAuthorizer() {
             }
 
             console.log('PQ factorization start', auth.pq);
+            
+            var pAndQ = cryptoWorker.factorize(auth.pq);
+            auth.p = pAndQ[0];
+            auth.q = pAndQ[1];
+            console.log('PQ factorization done', pAndQ[2]);
+            mtpSendReqDhParams(auth);
 
-            cryptoWorker.factorize(auth.pq).then(function (pAndQ) {
-                auth.p = pAndQ[0];
-                auth.q = pAndQ[1];
-                console.log('PQ factorization done', pAndQ[2]);
-                mtpSendReqDhParams(auth);
-            }, function (error) {
-                console.log('Worker error', error, error.stack);
-                deferred.reject(error);
-            });
         }, function (error) {
             console.error('req_pq error', error.message);
             deferred.reject(error);
         });
-        
-        mtpRsaKeysManager.prepare();        
+
+        mtpRsaKeysManager.prepare();
     }
 
     function mtpSendReqDhParams(auth) {
         var deferred = auth.deferred;
 
-        auth.newNonce = new Array(32);
-        MtpSecureRandom.nextBytes(auth.newNonce);
+        auth.newNonce = generateSecureRandomBytes(new Array(32));
 
         var data = new TLSerialization({ mtproto: true });
         data.storeObject({
@@ -224,7 +226,8 @@ export default function MtpAuthorizer() {
     }
 
     function mtpDecryptServerDhDataAnswer(auth, encryptedAnswer) {
-        auth.localTime = tsNow();
+        ////auth.localTime = tsNow();
+        auth.localTime = new Date().getTime();
 
         auth.tmpAesKey = sha1BytesSync(auth.newNonce.concat(auth.serverNonce)).concat(sha1BytesSync(auth.serverNonce.concat(auth.newNonce)).slice(0, 12));
         auth.tmpAesIv = sha1BytesSync(auth.serverNonce.concat(auth.newNonce)).slice(12).concat(sha1BytesSync([].concat(auth.newNonce, auth.newNonce)), auth.newNonce.slice(0, 4));
@@ -278,20 +281,20 @@ export default function MtpAuthorizer() {
         }
         console.log('dhPrime cmp OK');
 
-        var gABigInt = new BigInteger(bytesToHex(gA), 16);
-        var dhPrimeBigInt = new BigInteger(dhPrimeHex, 16);
+        var gABigInt = new jsbn.BigInteger(bytesToHex(gA), 16);
+        var dhPrimeBigInt = new jsbn.BigInteger(dhPrimeHex, 16);
 
-        if (gABigInt.compareTo(BigInteger.ONE) <= 0) {
+        if (gABigInt.compareTo(jsbn.BigInteger.ONE) <= 0) {
             throw new Error('[MT] DH params are not verified: gA <= 1');
         }
 
-        if (gABigInt.compareTo(dhPrimeBigInt.subtract(BigInteger.ONE)) >= 0) {
+        if (gABigInt.compareTo(dhPrimeBigInt.subtract(jsbn.BigInteger.ONE)) >= 0) {
             throw new Error('[MT] DH params are not verified: gA >= dhPrime - 1');
         }
 
         console.log('1 < gA < dhPrime-1 OK');
 
-        var two = new BigInteger(null);
+        var two = new jsbn.BigInteger(null);
         two.fromInt(2);
         var twoPow = two.pow(2048 - 64);
 
@@ -310,106 +313,110 @@ export default function MtpAuthorizer() {
         var deferred = auth.deferred;
         var gBytes = bytesFromHex(auth.g.toString(16));
 
-        auth.b = new Array(256);
-        MtpSecureRandom.nextBytes(auth.b);
+        // auth.b = new Array(256);
+        // MtpSecureRandom.nextBytes(auth.b);
+        auth.b = generateSecureRandomBytes(new Array(256));
 
-        cryptoWorker.modPow(gBytes, auth.b, auth.dhPrime).then(function (gB) {
-            var data = new TLSerialization({ mtproto: true });
-            data.storeObject({
-                _: 'client_DH_inner_data',
-                nonce: auth.nonce,
-                server_nonce: auth.serverNonce,
-                retry_id: [0, auth.retry++],
-                g_b: gB
-            }, 'Client_DH_Inner_Data');
+        ////cryptoWorker.modPow(gBytes, auth.b, auth.dhPrime).then(function (gB) {
+        var gB = cryptoWorker.modPow(gBytes, auth.b, auth.dhPrime);
 
-            var dataWithHash = sha1BytesSync(data.getBuffer()).concat(data.getBytes());
+        var data = new TLSerialization({ mtproto: true });
+        data.storeObject({
+            _: 'client_DH_inner_data',
+            nonce: auth.nonce,
+            server_nonce: auth.serverNonce,
+            retry_id: [0, auth.retry++],
+            g_b: gB
+        }, 'Client_DH_Inner_Data');
 
-            var encryptedData = aesEncryptSync(dataWithHash, auth.tmpAesKey, auth.tmpAesIv);
+        var dataWithHash = sha1BytesSync(data.getBuffer()).concat(data.getBytes());
 
-            var request = new TLSerialization({ mtproto: true });
+        var encryptedData = aesEncryptSync(dataWithHash, auth.tmpAesKey, auth.tmpAesIv);
 
-            request.storeMethod('set_client_DH_params', {
-                nonce: auth.nonce,
-                server_nonce: auth.serverNonce,
-                encrypted_data: encryptedData
-            });
+        var request = new TLSerialization({ mtproto: true });
 
-            console.log('Send set_client_DH_params');
+        request.storeMethod('set_client_DH_params', {
+            nonce: auth.nonce,
+            server_nonce: auth.serverNonce,
+            encrypted_data: encryptedData
+        });
 
-            mtpSendPlainRequest(auth.dcID, request.getBuffer()).then(function (deserializer) {
+        console.log('Send set_client_DH_params');
 
-                var response = deserializer.fetchObject('Set_client_DH_params_answer');
+        mtpSendPlainRequest(auth.dcID, request.getBuffer()).then(function (deserializer) {
 
-                if (response._ != 'dh_gen_ok' && response._ != 'dh_gen_retry' && response._ != 'dh_gen_fail') {
-                    deferred.reject(new Error('[MT] Set_client_DH_params_answer response invalid: ' + response._));
-                    return false;
-                }
+            var response = deserializer.fetchObject('Set_client_DH_params_answer');
 
-                if (!bytesCmp(auth.nonce, response.nonce)) {
-                    deferred.reject(new Error('[MT] Set_client_DH_params_answer nonce mismatch'));
-                    return false;
-                }
+            if (response._ != 'dh_gen_ok' && response._ != 'dh_gen_retry' && response._ != 'dh_gen_fail') {
+                deferred.reject(new Error('[MT] Set_client_DH_params_answer response invalid: ' + response._));
+                return false;
+            }
 
-                if (!bytesCmp(auth.serverNonce, response.server_nonce)) {
-                    deferred.reject(new Error('[MT] Set_client_DH_params_answer server_nonce mismatch'));
-                    return false;
-                }
+            if (!bytesCmp(auth.nonce, response.nonce)) {
+                deferred.reject(new Error('[MT] Set_client_DH_params_answer nonce mismatch'));
+                return false;
+            }
 
-                cryptoWorker.modPow(auth.gA, auth.b, auth.dhPrime).then(function (authKey) {
-                    var authKeyHash = sha1BytesSync(authKey),
-                        authKeyAux = authKeyHash.slice(0, 8),
-                        authKeyID = authKeyHash.slice(-8);
+            if (!bytesCmp(auth.serverNonce, response.server_nonce)) {
+                deferred.reject(new Error('[MT] Set_client_DH_params_answer server_nonce mismatch'));
+                return false;
+            }
 
-                    console.log('Got Set_client_DH_params_answer', response._);
+            ////cryptoWorker.modPow(auth.gA, auth.b, auth.dhPrime).then(function (authKey) {
+            var authKey = cryptoWorker.modPow(auth.gA, auth.b, auth.dhPrime);
+            var authKeyHash = sha1BytesSync(authKey),
+                authKeyAux = authKeyHash.slice(0, 8),
+                authKeyID = authKeyHash.slice(-8);
 
-                    switch (response._) {
-                        case 'dh_gen_ok':
-                            var newNonceHash1 = sha1BytesSync(auth.newNonce.concat([1], authKeyAux)).slice(-16);
+            console.log('Got Set_client_DH_params_answer', response._);
 
-                            if (!bytesCmp(newNonceHash1, response.new_nonce_hash1)) {
-                                deferred.reject(new Error('[MT] Set_client_DH_params_answer new_nonce_hash1 mismatch'));
-                                return false;
-                            }
+            switch (response._) {
+                case 'dh_gen_ok':
+                    var newNonceHash1 = sha1BytesSync(auth.newNonce.concat([1], authKeyAux)).slice(-16);
 
-                            var serverSalt = bytesXor(auth.newNonce.slice(0, 8), auth.serverNonce.slice(0, 8));
-                            // console.log('Auth successfull!', authKeyID, authKey, serverSalt)
-
-                            auth.authKeyID = authKeyID;
-                            auth.authKey = authKey;
-                            auth.serverSalt = serverSalt;
-
-                            deferred.resolve(auth);
-                            break;
-
-                        case 'dh_gen_retry':
-                            var newNonceHash2 = sha1BytesSync(auth.newNonce.concat([2], authKeyAux)).slice(-16);
-                            if (!bytesCmp(newNonceHash2, response.new_nonce_hash2)) {
-                                deferred.reject(new Error('[MT] Set_client_DH_params_answer new_nonce_hash2 mismatch'));
-                                return false;
-                            }
-
-                            return mtpSendSetClientDhParams(auth);
-
-                        case 'dh_gen_fail':
-                            var newNonceHash3 = sha1BytesSync(auth.newNonce.concat([3], authKeyAux)).slice(-16);
-                            if (!bytesCmp(newNonceHash3, response.new_nonce_hash3)) {
-                                deferred.reject(new Error('[MT] Set_client_DH_params_answer new_nonce_hash3 mismatch'));
-                                return false;
-                            }
-
-                            deferred.reject(new Error('[MT] Set_client_DH_params_answer fail'));
-                            return false;
+                    if (!bytesCmp(newNonceHash1, response.new_nonce_hash1)) {
+                        deferred.reject(new Error('[MT] Set_client_DH_params_answer new_nonce_hash1 mismatch'));
+                        return false;
                     }
-                }, function (error) {
-                    deferred.reject(error);
-                });
-            }, function (error) {
-                deferred.reject(error);
-            });
+
+                    var serverSalt = bytesXor(auth.newNonce.slice(0, 8), auth.serverNonce.slice(0, 8));
+                    // console.log('Auth successfull!', authKeyID, authKey, serverSalt)
+
+                    auth.authKeyID = authKeyID;
+                    auth.authKey = authKey;
+                    auth.serverSalt = serverSalt;
+
+                    deferred.resolve(auth);
+                    break;
+
+                case 'dh_gen_retry':
+                    var newNonceHash2 = sha1BytesSync(auth.newNonce.concat([2], authKeyAux)).slice(-16);
+                    if (!bytesCmp(newNonceHash2, response.new_nonce_hash2)) {
+                        deferred.reject(new Error('[MT] Set_client_DH_params_answer new_nonce_hash2 mismatch'));
+                        return false;
+                    }
+
+                    return mtpSendSetClientDhParams(auth);
+
+                case 'dh_gen_fail':
+                    var newNonceHash3 = sha1BytesSync(auth.newNonce.concat([3], authKeyAux)).slice(-16);
+                    if (!bytesCmp(newNonceHash3, response.new_nonce_hash3)) {
+                        deferred.reject(new Error('[MT] Set_client_DH_params_answer new_nonce_hash3 mismatch'));
+                        return false;
+                    }
+
+                    deferred.reject(new Error('[MT] Set_client_DH_params_answer fail'));
+                    return false;
+            }
+            // }, function (error) {
+            //     deferred.reject(error);
+            // });
         }, function (error) {
             deferred.reject(error);
         });
+        // }, function (error) {
+        //     deferred.reject(error);
+        // });
     }
 
     var cached = {};
@@ -433,8 +440,8 @@ export default function MtpAuthorizer() {
             nonce: nonce,
             deferred: $q.defer()
         };
-        
-        mtpSendReqPQ(auth);        
+
+        mtpSendReqPQ(auth);
 
         cached[dcID] = auth.deferred.promise;
 

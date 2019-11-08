@@ -1,8 +1,13 @@
 import Config from '../config';
 import $q from 'q';
+import {
+    convertToUint8Array, sha1HashSync, sha256HashSync, convertToArrayBuffer,
+    aesEncryptSync, aesDecryptSync, convertToByteArray, pqPrimeFactorization,
+    bytesModPow
+} from './bin_utils';
 
 export default function CryptoWorker() {
-    var webWorker = false;
+    // var webWorker = false;
     var naClEmbed = false;
     // var taskID = 0;
     // var awaiting = {};
@@ -12,7 +17,8 @@ export default function CryptoWorker() {
 
     function performTaskWorker(taskName, data, embed) {
 
-        // var taskID = e.data.taskID, result;
+        // var taskID = e.data.taskID, result;                
+        var result;
 
         switch (taskName) {
             case 'factorize':
@@ -37,7 +43,9 @@ export default function CryptoWorker() {
 
             default:
                 throw new Error('Unknown task: ' + data.task);
-        }
+        }        
+
+        return result;
     }
 
     // // var finalizeTask = function (taskID, result) {
@@ -159,29 +167,30 @@ export default function CryptoWorker() {
                 }, naClEmbed);
             }
 
-            return convertToArrayBuffer(aesDecryptSync(encryptedBytes, keyBytes, ivBytes));
+            ////return convertToArrayBuffer(aesDecryptSync(encryptedBytes, keyBytes, ivBytes));
         },
         factorize: function (bytes) {
+            
             bytes = convertToByteArray(bytes);
             if (naClEmbed && bytes.length <= 8) {
                 return performTaskWorker('factorize', { bytes: bytes }, naClEmbed);
             }
-            if (webWorker) {
+            // if (webWorker) {
                 return performTaskWorker('factorize', { bytes: bytes });
-            }
+            // }
 
-            return pqPrimeFactorization(bytes);
+            ////return pqPrimeFactorization(bytes);
         },
         modPow: function (x, y, m) {
-            if (webWorker) {
+            // if (webWorker) {
                 return performTaskWorker('mod-pow', {
                     x: x,
                     y: y,
                     m: m
                 });
-            }
+            // }
 
-            return bytesModPow(x, y, m);
+            ////return bytesModPow(x, y, m);
         }
     };
 };
