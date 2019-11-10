@@ -1,7 +1,5 @@
-import Config from '../config';
-
 export default function MtpDcConfigurator() {
-    var sslSubdomains = ['pluto', 'venus', 'aurora', 'vesta', 'flora'];
+    // var sslSubdomains = ['pluto', 'venus', 'aurora', 'vesta', 'flora'];
 
     // var dcOptions = Config.Modes.test
     //     ? [
@@ -17,39 +15,43 @@ export default function MtpDcConfigurator() {
     //         { id: 5, host: '149.154.171.5', port: 80 }
     //     ];
 
-    var dcOptions = [
-        { id: 1, host: '149.154.175.50', port: 80 },
-        { id: 2, host: '149.154.167.51', port: 80 },
-        { id: 3, host: '149.154.175.100', port: 80 },
-        { id: 4, host: '149.154.167.91', port: 80 },
-        { id: 5, host: '149.154.171.5', port: 80 }
-    ];
+    // var dcOptions = [
+    //     { id: 1, host: '149.154.175.50', port: 80 },
+    //     { id: 2, host: '149.154.167.51', port: 80 },
+    //     { id: 3, host: '149.154.175.100', port: 80 },
+    //     { id: 4, host: '149.154.167.91', port: 80 },
+    //     { id: 5, host: '149.154.171.5', port: 80 }
+    // ];
 
-    var chosenServers = {};
+    // var chosenServers = {};
 
     function chooseServer(dcID, upload) {
-        if (chosenServers[dcID] === undefined) {
-            var chosenServer = false, i, dcOption;
+        var chosenServer = 'https://venus.web.telegram.org/apiw1';
+        return chosenServer;
 
-            if (Config.Modes.ssl) {
-                var subdomain = sslSubdomains[dcID - 1] + (upload ? '-1' : '');
-                var path = Config.Modes.test ? 'apiw_test1' : 'apiw1';
-                chosenServer = 'https://' + subdomain + '.web.telegram.org/' + path;
-                return chosenServer;
-            }
+        // // if (chosenServers[dcID] === undefined) {
+        // //     var chosenServer = false, i, dcOption;
 
-            for (i = 0; i < dcOptions.length; i++) {
-                dcOption = dcOptions[i];
-                if (dcOption.id == dcID) {
-                    chosenServer = 'http://' + dcOption.host + (dcOption.port != 80 ? ':' + dcOption.port : '') + '/apiw1';
-                    break;
-                }
-            }
+        // //     ////if (Config.Modes.ssl) {
+        // //         var subdomain = sslSubdomains[dcID - 1] + (upload ? '-1' : '');
+        // //         ////var path = Config.Modes.test ? 'apiw_test1' : 'apiw1';
+        // //         ////var path = Config.Modes.test ? 'apiw_test1' : 'apiw1';
+        // //         chosenServer = 'https://' + subdomain + '.web.telegram.org/' + path;
+        // //         return chosenServer;
+        // //     ////}
 
-            chosenServers[dcID] = chosenServer;
-        }
+        // //     // for (i = 0; i < dcOptions.length; i++) {
+        // //     //     dcOption = dcOptions[i];
+        // //     //     if (dcOption.id == dcID) {
+        // //     //         chosenServer = 'http://' + dcOption.host + (dcOption.port != 80 ? ':' + dcOption.port : '') + '/apiw1';
+        // //     //         break;
+        // //     //     }
+        // //     // }
 
-        return chosenServers[dcID];
+        // //     // chosenServers[dcID] = chosenServer;
+        // // }
+
+        // // return chosenServers[dcID];
     }
 
     return {

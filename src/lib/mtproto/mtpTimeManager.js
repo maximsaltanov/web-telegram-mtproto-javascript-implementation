@@ -11,10 +11,7 @@ export default function MtpTimeManager() {
     // });
 
     function generateMessageID() {
-        // var timeTicks = tsNow(),
-        //     timeSec = Math.floor(timeTicks / 1000) + timeOffset,
-        //     timeMSec = timeTicks % 1000,
-        //     random = nextRandomInt(0xFFFF);
+                
         var timeTicks = new Date().getTime(),
             timeSec = Math.floor(timeTicks / 1000) + timeOffset,
             timeMSec = timeTicks % 1000,

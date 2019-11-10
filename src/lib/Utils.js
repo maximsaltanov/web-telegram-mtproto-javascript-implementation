@@ -16,6 +16,10 @@ const Utils = {
         request.verb        = r[3];
 
         return request;
+    },
+
+    isObject(obj) {
+        return obj === Object(obj);
     }
 };
 

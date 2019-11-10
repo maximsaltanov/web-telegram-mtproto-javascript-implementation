@@ -1,6 +1,7 @@
 import bigint from './bin_utils';
 import { bigStringInt, intToUint } from './bin_utils';
 import Config from '../config';
+import Utils from '../utils';
 
 export default function TLSerialization(options) {
     options = options || {};
@@ -68,7 +69,7 @@ TLSerialization.prototype.checkLength = function (needBytes) {
 
 TLSerialization.prototype.writeInt = function (i, field) {
 
-    this.debug && console.log('>>>', i.toString(16), i, field);
+    // this.debug && console.log('>>>', i.toString(16), i, field);
 
     this.checkLength(4);
     this.intView[this.offset / 4] = i;
@@ -122,7 +123,7 @@ TLSerialization.prototype.storeDouble = function (f, field) {
 };
 
 TLSerialization.prototype.storeString = function (s, field) {
-    this.debug && console.log('>>>', s, (field || '') + ':string');
+    // this.debug && console.log('>>>', s, (field || '') + ':string');
 
     if (s === undefined) {
         s = '';
@@ -160,7 +161,7 @@ TLSerialization.prototype.storeBytes = function (bytes, field) {
         bytes = [];
     }
 
-    this.debug && console.log('>>>', bytesToHex(bytes), (field || '') + ':bytes');
+    // this.debug && console.log('>>>', bytesToHex(bytes), (field || '') + ':bytes');
 
     var len = bytes.byteLength || bytes.length;
     this.checkLength(len + 8);
@@ -193,7 +194,7 @@ TLSerialization.prototype.storeIntBytes = function (bytes, bits, field) {
         throw new Error('Invalid bits: ' + bits + ', ' + bytes.length);
     }
 
-    this.debug && console.log('>>>', bytesToHex(bytes), (field || '') + ':int' + bits);
+    // this.debug && console.log('>>>', bytesToHex(bytes), (field || '') + ':int' + bits);
     this.checkLength(len);
 
     this.byteView.set(bytes, this.offset);
@@ -206,7 +207,7 @@ TLSerialization.prototype.storeRawBytes = function (bytes, field) {
     }
     var len = bytes.length;
 
-    this.debug && console.log('>>>', bytesToHex(bytes), (field || ''));
+    // this.debug && console.log('>>>', bytesToHex(bytes), (field || ''));
     this.checkLength(len);
 
     this.byteView.set(bytes, this.offset);
@@ -298,7 +299,7 @@ TLSerialization.prototype.storeObject = function (obj, type, field) {
     }
 
     ////if (!angular.isObject(obj)) {
-    if (!(obj instanceof Object)) {
+    if (!(Utils.isObject(obj))) {
         throw new Error('Invalid object for type ' + type);
     }
 

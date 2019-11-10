@@ -3,12 +3,21 @@ const Config = {
         id: 2496,
         hash: '8da85b0d5bfe62527e5b244c209159c3',
         version: '0.7.0',
-        domains: ['web.telegram.org', 'zhukov.github.io']
+        domains: ['web.telegram.org', 'zhukov.github.io'],
+        // id: 964141,
+        // hash: 'd9bf86a6fee15219b0a92c31b9e71060',
+        // version: '0.7.0',
+        // domains: ['mapul.com'],
+        // ipAddr: 'https://aurora.web.telegram.org/apiw1'
+        ////ipAddr: 'https://pluto.web.telegram.org/apiw1'
+        // ipAddr: 'https://venus.web.telegram.org/apiw1'
+        // ipAddr: 'https://149.154.167.40:443'
     },
     Modes: {
-        test: false,
-        debug: true,
-        ssl: location.protocol == 'https:',
+        test: location.search.indexOf('test=1') > 0,
+        debug: location.search.indexOf('debug=1') > 0,
+        http: location.search.indexOf('http=1') > 0,
+        ssl: location.search.indexOf('ssl=1') > 0 || location.protocol == 'https:' && location.search.indexOf('ssl=0') == -1,
         webcrypto: false,
         nacl: false
     },

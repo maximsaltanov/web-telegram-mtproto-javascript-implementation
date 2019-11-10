@@ -120,8 +120,7 @@ export default function MtpRsaKeysManager() {
             fingerprintHex = bigStringInt(fingerprints[i]).toString(16);
             if (foundKey = publicKeysParsed[fingerprintHex]) {
                 var ext = Object.assign({}, { fingerprint: fingerprints[i] }, foundKey);
-                return ext;
-                ////return angular.extend({ fingerprint: fingerprints[i] }, foundKey);
+                return ext;                
             }
         }
 

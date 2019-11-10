@@ -4,7 +4,7 @@ import TLSerialization from './tlSerialization';
 import TLDeserialization from './tlDeserialization';
 import MtpTimeManager from './mtpTimeManager';
 import CryptoWorker from './cryptoWorker';
-import axios from 'axios';
+import httpClient from './http';
 
 import {
     nextRandomInt, bytesCmp, bytesToHex, sha1BytesSync,
@@ -12,8 +12,8 @@ import {
     aesDecryptSync, bytesToArrayBuffer, bytesXor
 } from './bin_utils';
 import $q from 'q';
-import jsbn from 'jsbn';
-import { generateSecureRandomBytes } from './vendor/jsbn_combined';
+
+import { BigInteger, generateSecureRandomBytes } from './vendor/jsbn_combined';
 
 const mtpDcConfigurator = new MtpDcConfigurator();
 const mtpRsaKeysManager = new MtpRsaKeysManager();
@@ -23,10 +23,7 @@ const cryptoWorker = new CryptoWorker();
 export default function MtpAuthorizer() {
     var chromeMatches = navigator.userAgent.match(/Chrome\/(\d+(\.\d+)?)/);
     var chromeVersion = chromeMatches && parseFloat(chromeMatches[1]) || false;
-    var xhrSendBuffer = !('ArrayBufferView' in window) && (chromeVersion > 0 && chromeVersion < 30);
-
-    // delete $http.defaults.headers.post['Content-Type'];
-    // delete $http.defaults.headers.common['Accept'];
+    var xhrSendBuffer = !('ArrayBufferView' in window) && (chromeVersion > 0 && chromeVersion < 30);    
 
     function mtpSendPlainRequest(dcID, requestBuffer) {
         var requestLength = requestBuffer.byteLength,
@@ -47,31 +44,20 @@ export default function MtpAuthorizer() {
         resultArray.set(requestArray, headerArray.length);
 
         var requestData = xhrSendBuffer ? resultBuffer : resultArray, requestPromise;
-
-        ////var url = mtpDcConfigurator.chooseServer(dcID);
-        var url = "https://venus.web.telegram.org/apiw1";
+                
+        var url = mtpDcConfigurator.chooseServer(dcID);        
 
         var baseError = { code: 406, type: 'NETWORK_BAD_RESPONSE', url: url };
 
         try {
-
-            var httpClient = axios.create();
-            delete httpClient.defaults.headers.post['Content-Type'];
-            delete httpClient.defaults.headers.common['Accept'];
-
+            
             requestPromise = httpClient.post(url, requestData, {
                 responseType: 'arraybuffer',
                 transformRequest: null
-            });
+            });            
 
-            // // requestPromise = $http.post(url, requestData, {
-            // //     responseType: 'arraybuffer',
-            // //     transformRequest: null
-            // // });
-
-        } catch (e) {
-            ////requestPromise = $q.reject(angular.extend(baseError, { originalError: e }));
-            requestPromise = $q.reject(e);
+        } catch (e) {            
+            requestPromise = $q.reject(Object.assign({}, baseError, {originalError: e}));            
         }
 
         return requestPromise.then(
@@ -88,14 +74,14 @@ export default function MtpAuthorizer() {
 
                     console.log(`auth_key_id: ${auth_key_id}, msg_id: ${msg_id}, msg_len: ${msg_len}`);
                 } catch (e) {
-                    ////return $q.reject(angular.extend(baseError, { originalError: e }));
-                    return $q.reject(e);
+                    return $q.reject(Object.assign({}, baseError, {originalError: e}));                    
                 }
 
                 return deserializer;
             },
             function (error) {
                 if (!error.message && !error.type) {
+                    error = Object.assign({}, baseError, {originalError: error});
                     //error = angular.extend(baseError, { originalError: error });                    
                 }
                 return $q.reject(error);
@@ -138,11 +124,21 @@ export default function MtpAuthorizer() {
 
             console.log('PQ factorization start', auth.pq);
             
-            var pAndQ = cryptoWorker.factorize(auth.pq);
-            auth.p = pAndQ[0];
-            auth.q = pAndQ[1];
-            console.log('PQ factorization done', pAndQ[2]);
-            mtpSendReqDhParams(auth);
+            // var pAndQ = cryptoWorker.factorize(auth.pq);
+            // auth.p = pAndQ[0];
+            // auth.q = pAndQ[1];
+            // console.log('PQ factorization done', pAndQ[2]);
+            // mtpSendReqDhParams(auth);
+
+            cryptoWorker.factorize(auth.pq).then(function (pAndQ) {
+                auth.p = pAndQ[0];
+                auth.q = pAndQ[1];
+                console.log('PQ factorization done', pAndQ[2]);
+                mtpSendReqDhParams(auth);
+            }, function (error) {
+                console.log('Worker error', error, error.stack);
+                deferred.reject(error);
+            });
 
         }, function (error) {
             console.error('req_pq error', error.message);
@@ -281,20 +277,20 @@ export default function MtpAuthorizer() {
         }
         console.log('dhPrime cmp OK');
 
-        var gABigInt = new jsbn.BigInteger(bytesToHex(gA), 16);
-        var dhPrimeBigInt = new jsbn.BigInteger(dhPrimeHex, 16);
+        var gABigInt = new BigInteger(bytesToHex(gA), 16);
+        var dhPrimeBigInt = new BigInteger(dhPrimeHex, 16);        
 
-        if (gABigInt.compareTo(jsbn.BigInteger.ONE) <= 0) {
+        if (gABigInt.compareTo(BigInteger.ONE) <= 0) {
             throw new Error('[MT] DH params are not verified: gA <= 1');
         }
 
-        if (gABigInt.compareTo(dhPrimeBigInt.subtract(jsbn.BigInteger.ONE)) >= 0) {
+        if (gABigInt.compareTo(dhPrimeBigInt.subtract(BigInteger.ONE)) >= 0) {
             throw new Error('[MT] DH params are not verified: gA >= dhPrime - 1');
         }
 
         console.log('1 < gA < dhPrime-1 OK');
 
-        var two = new jsbn.BigInteger(null);
+        var two = new BigInteger(null);
         two.fromInt(2);
         var twoPow = two.pow(2048 - 64);
 

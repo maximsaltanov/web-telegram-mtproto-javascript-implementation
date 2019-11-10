@@ -5,36 +5,31 @@ import TLSerialization from './tlSerialization';
 import TLDeserialization from './tlDeserialization';
 import MtpTimeManager from './mtpTimeManager';
 import CryptoWorker from './cryptoWorker';
-import axios from 'axios';
+import httpClient from './http';
 
 import {
-  nextRandomInt, bytesCmp, bytesToHex, sha1BytesSync, bytesToArrayBuffer
+  nextRandomInt, bytesCmp, bytesToHex, sha1BytesSync, bytesToArrayBuffer, convertToUint8Array, bufferConcat
 } from './bin_utils';
 
 import $q from 'q';
 import { generateSecureRandomBytes } from './vendor/jsbn_combined';
+import Utils from '../utils';
 
 const mtpDcConfigurator = new MtpDcConfigurator();
 const mtpTimeManager = new MtpTimeManager();
 const cryptoWorker = new CryptoWorker();
 
 export function MtpNetworkerFactory() {
-  var updatesProcessor;
-  var iii = 0, offline;
+  var updatesProcessor;  
   var offlineInited = false;
   var akStopped = false;
   var chromeMatches = navigator.userAgent.match(/Chrome\/(\d+(\.\d+)?)/);
   var chromeVersion = chromeMatches && parseFloat(chromeMatches[1]) || false;
-  var xhrSendBuffer = !('ArrayBufferView' in window) && (chromeVersion > 0 && chromeVersion < 30);
-
-  // delete $http.defaults.headers.post['Content-Type'];
-  // delete $http.defaults.headers.common['Accept'];
-
-  // $rootScope.retryOnline = function () {
-  //   $(document.body).trigger('online');
-  // };
-
+  var xhrSendBuffer = !('ArrayBufferView' in window) && (chromeVersion > 0 && chromeVersion < 30);  
+  
   function MtpNetworker(dcID, authKey, serverSalt, options) {
+    console.log('MtpNetworker');
+
     options = options || {};
 
     this.dcID = dcID;
@@ -59,9 +54,8 @@ export function MtpNetworkerFactory() {
     this.pendingAcks = [];
     this.pendingResends = [];
     this.connectionInited = false;
-
-
-    this.longPollInt = $interval(this.checkLongPoll.bind(this), 10000);
+    
+    this.longPollInt = setInterval(this.checkLongPoll.bind(this), 10000);
 
     this.checkLongPoll();
 
@@ -71,12 +65,13 @@ export function MtpNetworkerFactory() {
       // $rootScope.offlineConnecting = true;
     }
 
-    if (Config.Navigator.mobile) {
-      this.setupMobileSleep();
-    }
+    // if (Config.Navigator.mobile) {
+    //   this.setupMobileSleep();
+    // }
   }
 
   MtpNetworker.prototype.updateSession = function () {
+    console.log('updateSession');
     this.seqNo = 0;
     this.prevSessionID = this.sessionID;
     this.sessionID = new Array(8);
@@ -107,6 +102,8 @@ export function MtpNetworkerFactory() {
   // };
 
   MtpNetworker.prototype.updateSentMessage = function (sentMessageID) {
+    console.log('updateSentMessage');
+
     var sentMessage = this.sentMessages[sentMessageID];
     if (!sentMessage) {
       return false;
@@ -115,12 +112,27 @@ export function MtpNetworkerFactory() {
     var self = this;
     if (sentMessage.container) {
       var newInner = [];
-      angular.forEach(sentMessage.inner, function (innerSentMessageID) {
-        var innerSentMessage = self.updateSentMessage(innerSentMessageID);
-        if (innerSentMessage) {
-          newInner.push(innerSentMessage.msg_id);
+
+      // angular.forEach(sentMessage.inner, function (innerSentMessageID) {
+      //   var innerSentMessage = self.updateSentMessage(innerSentMessageID);
+      //   if (innerSentMessage) {
+      //     newInner.push(innerSentMessage.msg_id);
+      //   }
+      // });
+
+      if (Object.keys(sentMessage.inner).length > 0) {
+
+        ////(sentMessage.inner).forEach(function (innerSentMessageID) {
+        for(var item in (sentMessage.inner)) {
+          var innerSentMessageID = (sentMessage.inner)[item];
+          var innerSentMessage = self.updateSentMessage(innerSentMessageID);
+          if (innerSentMessage) {
+            newInner.push(innerSentMessage.msg_id);
+          }
+        ///});
         }
-      });
+      }
+
       sentMessage.inner = newInner;
     };
 
@@ -137,6 +149,8 @@ export function MtpNetworkerFactory() {
   };
 
   MtpNetworker.prototype.generateSeqNo = function (notContentRelated) {
+    console.log('generateSeqNo');
+
     var seqNo = this.seqNo * 2;
 
     if (!notContentRelated) {
@@ -148,6 +162,8 @@ export function MtpNetworkerFactory() {
   };
 
   MtpNetworker.prototype.wrapMtpCall = function (method, params, options) {
+    console.log('wrapMtpCall');
+
     var serializer = new TLSerialization({ mtproto: true });
 
     serializer.storeMethod(method, params);
@@ -160,14 +176,16 @@ export function MtpNetworkerFactory() {
       body: serializer.getBytes()
     };
 
-    if (Config.Modes.debug) {
-      console.log('MT call', method, params, messageID, seqNo);
-    }
+    // if (Config.Modes.debug) {
+    //   console.log('MT call', method, params, messageID, seqNo);
+    // }
 
     return this.pushMessage(message, options);
   };
 
   MtpNetworker.prototype.wrapMtpMessage = function (object, options) {
+    console.log('wrapMtpMessage');
+
     options = options || {};
 
     var serializer = new TLSerialization({ mtproto: true });
@@ -181,14 +199,16 @@ export function MtpNetworkerFactory() {
       body: serializer.getBytes()
     };
 
-    if (Config.Modes.debug) {
-      console.log('MT message', object, messageID, seqNo);
-    }
+    // if (Config.Modes.debug) {
+    //   console.log('MT message', object, messageID, seqNo);
+    // }
 
     return this.pushMessage(message, options);
   };
 
   MtpNetworker.prototype.wrapApiCall = function (method, params, options) {
+    console.log('wrapApiCall');
+
     var serializer = new TLSerialization(options);
 
     if (!this.connectionInited) {
@@ -220,45 +240,51 @@ export function MtpNetworkerFactory() {
       isAPI: true
     };
 
-    if (Config.Modes.debug) {
-      console.log('Api call', method, params, messageID, seqNo, options);
-    } else {
+    ////if (Config.Modes.debug) {
+    //  console.log('Api call', method, params, messageID, seqNo, options);
+    // } else {
       console.log('Api call', method);
-    }
+    // }
 
     return this.pushMessage(message, options);
   };
 
   MtpNetworker.prototype.checkLongPoll = function (force) {
+    console.log('checkLongPoll');
+
     var isClean = this.cleanupSent();
-    // console.log('Check lp', this.longPollPending, new Date().getTime(), this.dcID, isClean)
-    if (this.longPollPending && new Date().getTime() < this.longPollPending ||
-      this.offline ||
-      akStopped) {
+    ////console.log('Check lp', this.longPollPending, new Date().getTime(), this.dcID, isClean);
+
+    if (this.longPollPending && new Date().getTime() < this.longPollPending || this.offline || akStopped) {
       return false;
     }
+
     var self = this;
 
-    // // Storage.get('dc').then(function (baseDcID) {
-    // //   if (isClean && (
-    // //     baseDcID != self.dcID ||
-    // //     self.upload ||
-    // //     self.sleepAfter && new Date().getTime() > self.sleepAfter
-    // //   )) {
-    // //     // console.warn(dT(), 'Send long-poll for DC is delayed', self.dcID, self.sleepAfter)
-    // //     return;
-    // //   }
-    self.sendLongPoll();
-    // // });
+    // Storage.get('dc').then(function (baseDcID) {    
+      var baseDcID = false;
+      if (isClean && (
+        baseDcID != self.dcID ||
+        self.upload ||
+        self.sleepAfter && new Date().getTime() > self.sleepAfter
+      )) {
+        ////console.warn('Send long-poll for DC is delayed', self.dcID, self.sleepAfter);
+        return;
+      }
+
+      self.sendLongPoll();
+    // });
 
   };
 
   MtpNetworker.prototype.sendLongPoll = function () {
+    console.log('sendLongPoll');
+
     var maxWait = 25000;
     var self = this;
 
     this.longPollPending = new Date().getTime() + maxWait;
-    // console.log('Set lp', this.longPollPending, new Date().getTime())
+    ////console.log('Set lp', this.longPollPending, new Date().getTime());
 
     this.wrapMtpCall('http_wait', {
       max_delay: 500,
@@ -271,6 +297,7 @@ export function MtpNetworkerFactory() {
       delete self.longPollPending;
 
       ////setZeroTimeout(self.checkLongPoll.bind(self));
+      self.checkLongPoll.bind(self);
 
     }, function (error) {
       console.log('Long-poll failed', error);
@@ -278,16 +305,21 @@ export function MtpNetworkerFactory() {
   };
 
   MtpNetworker.prototype.pushMessage = function (message, options) {
+    console.log('pushMessage', message);
+
     var deferred = $q.defer();
+    
+    ////this.sentMessages[message.msg_id] = angular.extend(message, options || {}, { deferred: deferred });    
+    this.sentMessages[message.msg_id] = Object.assign(message, options || {}, { deferred: deferred });    
 
-    this.sentMessages[message.msg_id] = angular.extend(message, options || {}, { deferred: deferred });    
-
-    this.pendingMessages[message.msg_id] = 0;
+    ////if (Object.keys(this.pendingMessages).length > 0) {
+      this.pendingMessages[message.msg_id] = 0;
+    ////}
 
     if (!options || !options.noShedule) {
       this.sheduleRequest();
     }
-    if (angular.isObject(options)) {
+    if (Utils.isObject(options)) {
       options.messageID = message.msg_id;
     }
 
@@ -295,6 +327,8 @@ export function MtpNetworkerFactory() {
   };
 
   MtpNetworker.prototype.pushResend = function (messageID, delay) {
+    console.log('pushResend');
+
     var value = delay ? new Date().getTime() + delay : 0;
     var sentMessage = this.sentMessages[messageID];
     if (sentMessage.container) {
@@ -309,24 +343,23 @@ export function MtpNetworkerFactory() {
     this.sheduleRequest(delay);
   };
 
-  MtpNetworker.prototype.getMsgKey = function (dataWithPadding, isOut) {
+  MtpNetworker.prototype.getMsgKey = function (dataWithPadding, isOut) {    
+
+    console.log('getMsgKey');
+
     var authKey = this.authKeyUint8;
     var x = isOut ? 0 : 8;
     var msgKeyLargePlain = bufferConcat(authKey.subarray(88 + x, 88 + x + 32), dataWithPadding);
-    
-    // return CryptoWorker.sha256Hash(msgKeyLargePlain).then(function (msgKeyLarge) {
-    //   var msgKey = new Uint8Array(msgKeyLarge).subarray(8, 24);
-    //   return msgKey;
-    // });
-
+        
     return cryptoWorker.sha256Hash(msgKeyLargePlain).then(function (msgKeyLarge) {
       var msgKey = new Uint8Array(msgKeyLarge).subarray(8, 24);
       return msgKey;
-    });
-
+    });    
   };
 
   MtpNetworker.prototype.getAesKeyIv = function (msgKey, isOut) {
+    console.log('getAesKeyIv');
+
     var authKey = this.authKeyUint8;
     var x = isOut ? 0 : 8;
     var sha2aText = new Uint8Array(52);
@@ -334,14 +367,15 @@ export function MtpNetworkerFactory() {
     var promises = {};
 
     sha2aText.set(msgKey, 0);
-    sha2aText.set(authKey.subarray(x, x + 36), 16);
+    sha2aText.set(authKey.subarray(x, x + 36), 16);                
     promises.sha2a = cryptoWorker.sha256Hash(sha2aText);
 
     sha2bText.set(authKey.subarray(40 + x, 40 + x + 36), 0);
-    sha2bText.set(msgKey, 36);
+    sha2bText.set(msgKey, 36);        
     promises.sha2b = cryptoWorker.sha256Hash(sha2bText);
 
     return $q.all(promises).then(function (result) {
+      console.log('$q.all(promises)');
       var aesKey = new Uint8Array(32);
       var aesIv = new Uint8Array(32);
       var sha2a = new Uint8Array(result.sha2a);
@@ -360,11 +394,13 @@ export function MtpNetworkerFactory() {
   };
 
   MtpNetworker.prototype.checkConnection = function (event) {
+
     //$rootScope.offlineConnecting = true;
 
     console.log('Check connection', event);
 
     ////$timeout.cancel(this.checkConnectionPromise);
+    clearTimeout(this.checkConnectionPromise);
 
     var serializer = new TLSerialization({ mtproto: true });
     var pingID = [nextRandomInt(0xFFFFFFFF), nextRandomInt(0xFFFFFFFF)];
@@ -384,7 +420,8 @@ export function MtpNetworkerFactory() {
     }, function () {
       console.log('Delay ', self.checkConnectionPeriod * 1000);
 
-      self.checkConnectionPromise = $timeout(self.checkConnection.bind(self), parseInt(self.checkConnectionPeriod * 1000));
+      self.checkConnectionPromise = setTimeout(self.checkConnection.bind(self), parseInt(self.checkConnectionPeriod * 1000));
+      ////self.checkConnectionPromise = $timeout(self.checkConnection.bind(self), parseInt(self.checkConnectionPeriod * 1000));
 
       self.checkConnectionPeriod = Math.min(60, self.checkConnectionPeriod * 1.5);
 
@@ -396,6 +433,8 @@ export function MtpNetworkerFactory() {
   };
 
   MtpNetworker.prototype.toggleOffline = function (enabled) {
+    console.log('toggleOffline');
+
     // console.log('toggle ', enabled, this.dcID, this.iii)
     if (this.offline !== undefined && this.offline == enabled) {
       return false;
@@ -407,6 +446,7 @@ export function MtpNetworkerFactory() {
 
     if (this.offline) {
       ////$timeout.cancel(this.nextReqPromise);
+      clearTimeout(this.nextReqPromise);
 
       delete this.nextReq;
 
@@ -414,7 +454,8 @@ export function MtpNetworkerFactory() {
         this.checkConnectionPeriod = 0;
       }
 
-      this.checkConnectionPromise = $timeout(this.checkConnection.bind(this), parseInt(this.checkConnectionPeriod * 1000));
+      this.checkConnectionPromise = setTimeout(self.checkConnection.bind(self), parseInt(self.checkConnectionPeriod * 1000));
+      ////this.checkConnectionPromise = $timeout(this.checkConnection.bind(this), parseInt(this.checkConnectionPeriod * 1000));
 
       this.checkConnectionPeriod = Math.min(30, (1 + this.checkConnectionPeriod) * 1.5);
 
@@ -431,10 +472,13 @@ export function MtpNetworkerFactory() {
       }
 
       ////$timeout.cancel(this.checkConnectionPromise);
+      clearTimeout(this.checkConnectionPromise);
     }
   };
 
   MtpNetworker.prototype.performSheduledRequest = function () {
+    console.log('performSheduledRequest');
+
     // console.log(dT(), 'sheduled', this.dcID, this.iii)
     if (this.offline || akStopped) {
       console.log('Cancel sheduled');
@@ -472,40 +516,53 @@ export function MtpNetworkerFactory() {
     var singlesCount = 0;
     var self = this;
 
-    angular.forEach(this.pendingMessages, function (value, messageID) {
-      if (!value || value >= currentTime) {
-        if (message = self.sentMessages[messageID]) {
-          var messageByteLength = (message.body.byteLength || message.body.length) + 32;
-          if (!message.notContentRelated &&
-            lengthOverflow) {
-            return;
-          }
-          if (!message.notContentRelated &&
-            messagesByteLen &&
-            messagesByteLen + messageByteLength > 655360) { // 640 Kb
-            lengthOverflow = true;
-            return;
-          }
-          if (message.singleInRequest) {
-            singlesCount++;
-            if (singlesCount > 1) {
+    if (Object.keys(this.pendingMessages).length > 0) {
+      
+      for(var item in this.pendingMessages) {
+        var value = this.sentMessages[item];
+        var messageID = value.msg_id;
+
+      ////(this.pendingMessages).forEach(function (value, messageID) {
+      ////angular.forEach(this.pendingMessages, function (value, messageID) {      
+        ////if (!value || value >= currentTime) {
+          if (message = self.sentMessages[messageID]) {
+            var messageByteLength = (message.body.byteLength || message.body.length) + 32;
+            if (!message.notContentRelated &&
+              lengthOverflow) {
               return;
             }
+            if (!message.notContentRelated &&
+              messagesByteLen &&
+              messagesByteLen + messageByteLength > 655360) { // 640 Kb
+              lengthOverflow = true;
+              return;
+            }
+            if (message.singleInRequest) {
+              singlesCount++;
+              if (singlesCount > 1) {
+                return;
+              }
+            }
+            messages.push(message);
+            messagesByteLen += messageByteLength;
+            if (message.isAPI) {
+              hasApiCall = true;
+            }
+            else if (message.longPoll) {
+              hasHttpWait = true;
+            }
+          } else {
+            // console.log(message, messageID)
           }
-          messages.push(message);
-          messagesByteLen += messageByteLength;
-          if (message.isAPI) {
-            hasApiCall = true;
-          }
-          else if (message.longPoll) {
-            hasHttpWait = true;
-          }
-        } else {
-          // console.log(message, messageID)
-        }
-        delete self.pendingMessages[messageID];
+          delete self.pendingMessages[messageID];
+        ////}
+
+        messageID++;
       }
-    });
+      ////}); 
+    } 
+
+    console.log(this.pendingMessages);
 
     if (hasApiCall && !hasHttpWait) {
       var serializer = new TLSerialization({ mtproto: true });
@@ -527,13 +584,14 @@ export function MtpNetworkerFactory() {
       return;
     }
 
+    console.log(messages);
+
     var noResponseMsgs = [];
 
     if (messages.length > 1) {
       var container = new TLSerialization({ mtproto: true, startMaxLength: messagesByteLen + 64 });
       container.storeInt(0x73f1f8dc, 'CONTAINER[id]');
-      container.storeInt(messages.length, 'CONTAINER[count]');
-      var onloads = [];
+      container.storeInt(messages.length, 'CONTAINER[count]');      
       var innerMessages = [];
       for (var i = 0; i < messages.length; i++) {
         container.storeLong(messages[i].msg_id, 'CONTAINER[' + i + '][msg_id]');
@@ -568,25 +626,32 @@ export function MtpNetworkerFactory() {
       this.sentMessages[message.msg_id] = message;
     }
 
+    console.log(this.sentMessages);
+
     this.pendingAcks = [];
 
     this.sendEncryptedRequest(message).then(function (result) {
       self.toggleOffline(false);
       // console.log('parse for', message)
       self.parseResponse(result.data).then(function (response) {
-        if (Config.Modes.debug) {
-          console.log('Server response', self.dcID, response);
-        }
+        // if (Config.Modes.debug) {
+        //   console.log('Server response', self.dcID, response);
+        // }
 
         self.processMessage(response.response, response.messageID, response.sessionID);
 
-        angular.forEach(noResponseMsgs, function (msgID) {
-          if (self.sentMessages[msgID]) {
-            var deferred = self.sentMessages[msgID].deferred;
-            delete self.sentMessages[msgID];
-            deferred.resolve();
+        ////angular.forEach(noResponseMsgs, function (msgID) {
+        if (Object.keys(noResponseMsgs).length > 0) {
+          for(var msgID in noResponseMsgs) {
+          ////noResponseMsgs.forEach(function (msgID) {  
+            if (self.sentMessages[msgID]) {
+              var deferred = self.sentMessages[msgID].deferred;
+              delete self.sentMessages[msgID];
+              deferred.resolve();
+            }
           }
-        });
+          ////});
+        }
 
         self.checkLongPoll();
 
@@ -596,23 +661,33 @@ export function MtpNetworkerFactory() {
       console.error('Encrypted request failed', error);
 
       if (message.container) {
-        angular.forEach(message.inner, function (msgID) {
-          self.pendingMessages[msgID] = 0;
-        });
+        ////angular.forEach(message.inner, function (msgID) {
+        if (Object.keys(message.inner).length > 0) {
+          ////(message.inner).forEach(function (msgID) {  
+          for(var msgID in (message.inner)) {
+            self.pendingMessages[msgID] = 0;
+          }
+          ////});
+        }
 
         delete self.sentMessages[message.msg_id];
       } else {
         self.pendingMessages[message.msg_id] = 0;
       }
 
-      angular.forEach(noResponseMsgs, function (msgID) {
-        if (self.sentMessages[msgID]) {
-          var deferred = self.sentMessages[msgID].deferred;
-          delete self.sentMessages[msgID];
-          delete self.pendingMessages[msgID];
-          deferred.reject();
+      ////angular.forEach(noResponseMsgs, function (msgID) {
+      if (Object.keys(noResponseMsgs).length > 0) {
+        ////noResponseMsgs.forEach(function (msgID) {  
+        for(var msgID in noResponseMsgs) {
+          if (self.sentMessages[msgID]) {
+            var deferred = self.sentMessages[msgID].deferred;
+            delete self.sentMessages[msgID];
+            delete self.pendingMessages[msgID];
+            deferred.reject();
+          }
         }
-      });
+        ////});
+      }
 
       self.toggleOffline(true);
     });
@@ -623,6 +698,8 @@ export function MtpNetworkerFactory() {
   };
 
   MtpNetworker.prototype.getEncryptedMessage = function (dataWithPadding) {
+    console.log('getEncryptedMessage', dataWithPadding);
+
     var self = this;
     return self.getMsgKey(dataWithPadding, true).then(function (msgKey) {
       return self.getAesKeyIv(msgKey, true).then(function (keyIv) {
@@ -639,6 +716,8 @@ export function MtpNetworkerFactory() {
   };
 
   MtpNetworker.prototype.getDecryptedMessage = function (msgKey, encryptedData) {
+    console.log('getDecryptedMessage');
+
     // console.log(dT(), 'get decrypted start')
     return this.getAesKeyIv(msgKey, false).then(function (keyIv) {
       // console.log(dT(), 'after msg key iv')
@@ -647,10 +726,268 @@ export function MtpNetworkerFactory() {
   };
 
   MtpNetworker.prototype.sendEncryptedRequest = function (message, options) {
+    console.log('sendEncryptedRequest', message);
+
     var self = this;
     options = options || {};
-    // console.log(dT(), 'Send encrypted'/*, message*/)
-    // console.trace()
+
+    // // var arr = [
+    // //   220,
+    // //   248,
+    // //   241,
+    // //   115,
+    // //   2,
+    // //   0,
+    // //   0,
+    // //   0,
+    // //   204,
+    // //   235,
+    // //   5,
+    // //   106,
+    // //   25,
+    // //   165,
+    // //   199,
+    // //   93,
+    // //   1,
+    // //   0,
+    // //   0,
+    // //   0,
+    // //   164,
+    // //   0,
+    // //   0,
+    // //   0,
+    // //   13,
+    // //   13,
+    // //   155,
+    // //   218,
+    // //   74,
+    // //   0,
+    // //   0,
+    // //   0,
+    // //   166,
+    // //   29,
+    // //   72,
+    // //   199,
+    // //   192,
+    // //   9,
+    // //   0,
+    // //   0,
+    // //   114,
+    // //   77,
+    // //   111,
+    // //   122,
+    // //   105,
+    // //   108,
+    // //   108,
+    // //   97,
+    // //   47,
+    // //   53,
+    // //   46,
+    // //   48,
+    // //   32,
+    // //   40,
+    // //   87,
+    // //   105,
+    // //   110,
+    // //   100,
+    // //   111,
+    // //   119,
+    // //   115,
+    // //   32,
+    // //   78,
+    // //   84,
+    // //   32,
+    // //   49,
+    // //   48,
+    // //   46,
+    // //   48,
+    // //   59,
+    // //   32,
+    // //   87,
+    // //   105,
+    // //   110,
+    // //   54,
+    // //   52,
+    // //   59,
+    // //   32,
+    // //   120,
+    // //   54,
+    // //   52,
+    // //   41,
+    // //   32,
+    // //   65,
+    // //   112,
+    // //   112,
+    // //   108,
+    // //   101,
+    // //   87,
+    // //   101,
+    // //   98,
+    // //   75,
+    // //   105,
+    // //   116,
+    // //   47,
+    // //   53,
+    // //   51,
+    // //   55,
+    // //   46,
+    // //   51,
+    // //   54,
+    // //   32,
+    // //   40,
+    // //   75,
+    // //   72,
+    // //   84,
+    // //   77,
+    // //   76,
+    // //   44,
+    // //   32,
+    // //   108,
+    // //   105,
+    // //   107,
+    // //   101,
+    // //   32,
+    // //   71,
+    // //   101,
+    // //   99,
+    // //   107,
+    // //   111,
+    // //   41,
+    // //   32,
+    // //   67,
+    // //   104,
+    // //   114,
+    // //   111,
+    // //   109,
+    // //   101,
+    // //   47,
+    // //   55,
+    // //   56,
+    // //   46,
+    // //   48,
+    // //   46,
+    // //   51,
+    // //   57,
+    // //   48,
+    // //   52,
+    // //   46,
+    // //   57,
+    // //   55,
+    // //   32,
+    // //   83,
+    // //   97,
+    // //   102,
+    // //   97,
+    // //   114,
+    // //   105,
+    // //   47,
+    // //   53,
+    // //   51,
+    // //   55,
+    // //   46,
+    // //   51,
+    // //   54,
+    // //   0,
+    // //   5,
+    // //   87,
+    // //   105,
+    // //   110,
+    // //   51,
+    // //   50,
+    // //   0,
+    // //   0,
+    // //   5,
+    // //   48,
+    // //   46,
+    // //   55,
+    // //   46,
+    // //   48,
+    // //   0,
+    // //   0,
+    // //   2,
+    // //   101,
+    // //   110,
+    // //   0,
+    // //   0,
+    // //   0,
+    // //   0,
+    // //   0,
+    // //   2,
+    // //   101,
+    // //   110,
+    // //   0,
+    // //   38,
+    // //   48,
+    // //   179,
+    // //   31,
+    // //   252,
+    // //   195,
+    // //   38,
+    // //   106,
+    // //   25,
+    // //   165,
+    // //   199,
+    // //   93,
+    // //   3,
+    // //   0,
+    // //   0,
+    // //   0,
+    // //   16,
+    // //   0,
+    // //   0,
+    // //   0,
+    // //   159,
+    // //   53,
+    // //   153,
+    // //   146,
+    // //   244,
+    // //   1,
+    // //   0,
+    // //   0,
+    // //   150,
+    // //   0,
+    // //   0,
+    // //   0,
+    // //   184,
+    // //   11,
+    // //   0,
+    // //   0
+    // // ];
+
+    // //   var msgBody = new Int32Array(220);        
+    // //   var i = 0;
+    // //   arr.forEach((ite) => {
+    // //     msgBody[i] = ite;
+    // //     i++;
+    // //   });
+
+    // // message.body = msgBody;
+
+    // // this.serverSalt = [
+    // //   80,
+    // //   86,
+    // //   120,
+    // //   141,
+    // //   216,
+    // //   161,
+    // //   75,
+    // //   8
+    // // ];
+
+    // // this.sessionID = [
+    // //   186,
+    // //   161,
+    // //   203,
+    // //   6,
+    // //   251,
+    // //   52,
+    // //   37,
+    // //   223
+    // // ];
+
+    // // message.msg_id = 6757551294468230588;
+    // // message.seq_no = 4;
+    
     var data = new TLSerialization({ startMaxLength: message.body.length + 2048 });
 
     data.storeIntBytes(this.serverSalt, 64, 'salt');
@@ -669,11 +1006,35 @@ export function MtpNetworkerFactory() {
 
     padding = generateSecureRandomBytes(padding);    
 
+    // padding = [
+    //     48,
+    //     208,
+    //     211,
+    //     87,
+    //     46,
+    //     41,
+    //     187,
+    //     34,
+    //     220,
+    //     250,
+    //     55,
+    //     85,
+    //     51,
+    //     241,
+    //     28,
+    //     127,
+    //     221,
+    //     197,
+    //     54,
+    //     195
+    //   ];
+
     var dataWithPadding = bufferConcat(dataBuffer, padding);
     // console.log(dT(), 'Adding padding', dataBuffer, padding, dataWithPadding)
     // console.log(dT(), 'auth_key_id', bytesToHex(self.authKeyID))
 
     return this.getEncryptedMessage(dataWithPadding).then(function (encryptedResult) {
+      console.log('getEncryptedMessageResult', encryptedResult);
       // console.log(dT(), 'Got encrypted out message'/*, encryptedResult*/)
       var request = new TLSerialization({ startMaxLength: encryptedResult.bytes.byteLength + 256 });
       request.storeIntBytes(self.authKeyID, 64, 'auth_key_id');
@@ -683,30 +1044,30 @@ export function MtpNetworkerFactory() {
       var requestData = xhrSendBuffer ? request.getBuffer() : request.getArray();
 
       var requestPromise;
-      var url = mtpDcConfigurator.chooseServer(self.dcID, self.upload);
+      
+      // var url = "https://venus.web.telegram.org/apiw1";
+      ////var url = Config.App.ipAddr;
+      var url = mtpDcConfigurator.chooseServer(self.dcID, self.upload);      
+
       var baseError = { code: 406, type: 'NETWORK_BAD_RESPONSE', url: url };
 
       try {
-        // // options = angular.extend(options || {}, {
-        // //   responseType: 'arraybuffer',
-        // //   transformRequest: null
-        // // });
-
-        ////requestPromise = $http.post(url, requestData, options);
-
-        var httpClient = axios.create();
-        delete httpClient.defaults.headers.post['Content-Type'];
-        delete httpClient.defaults.headers.common['Accept'];
-
+                        
         options = Object.assign({}, options || {}, {
             responseType: 'arraybuffer',
             transformRequest: null
         });
+        
+        console.log("url", url);
+        console.log("requestData", requestData);
+        console.log("options", options);      
 
-        requestPromise = httpClient.post(url, requestData, {
-            responseType: 'arraybuffer',
-            transformRequest: null
-        });
+        requestPromise = httpClient.post(url, requestData, options);
+
+        // requestPromise = httpClient.post(url, requestData, {
+        //   responseType: 'arraybuffer',
+        //   transformRequest: null
+        // });
 
       } catch (e) {
         requestPromise = $q.reject(e);
@@ -720,7 +1081,8 @@ export function MtpNetworkerFactory() {
         },
         function (error) {
           if (!error.message && !error.type) {
-            error = angular.extend(baseError, { type: 'NETWORK_BAD_REQUEST', originalError: error });                        
+            // error = angular.extend(baseError, { type: 'NETWORK_BAD_REQUEST', originalError: error });                        
+            error = Object.assign({}, baseError, { type: 'NETWORK_BAD_REQUEST', originalError: error });
           }
           return $q.reject(error);
         }
@@ -729,6 +1091,8 @@ export function MtpNetworkerFactory() {
   };
 
   MtpNetworker.prototype.parseResponse = function (responseBuffer) {
+    console.log('parseResponse');
+
     // console.log(dT(), 'Start parsing response')
     var self = this;
     var deserializer = new TLDeserialization(responseBuffer);
@@ -836,6 +1200,8 @@ export function MtpNetworkerFactory() {
 
   MtpNetworker.prototype.applyServerSalt = function (newServerSalt) {
 
+    console.log('applyServerSalt');
+
     var serverSalt = longToBytes(newServerSalt);
 
     var storeObj = {};
@@ -848,6 +1214,8 @@ export function MtpNetworkerFactory() {
   };
 
   MtpNetworker.prototype.sheduleRequest = function (delay) {
+    console.log('sheduleRequest');
+
     if (this.offline) {
       this.checkConnection('forced shedule');
     }
@@ -864,55 +1232,73 @@ export function MtpNetworkerFactory() {
     ////$timeout.cancel(this.nextReqPromise);
 
     if (delay > 0) {
-      this.nextReqPromise = $timeout(this.performSheduledRequest.bind(this), delay || 0);
+      ////this.nextReqPromise = $timeout(this.performSheduledRequest.bind(this), delay || 0);
+      this.nextReqPromise = setTimeout(self.performSheduledRequest.bind(self), delay || 0);
     } else {
+      ////self.performSheduledRequest.bind(self);
       ////setZeroTimeout(this.performSheduledRequest.bind(this));
+      this.performSheduledRequest();
     }
 
     this.nextReq = nextReq;
   };
 
   MtpNetworker.prototype.ackMessage = function (msgID) {
+    console.log('ackMessage');
+
     // console.log('ack message', msgID)
     this.pendingAcks.push(msgID);
     this.sheduleRequest(30000);
   };
 
   MtpNetworker.prototype.reqResendMessage = function (msgID) {
-    console.log('Req resend', msgID);
+    
+    console.log('reqResendMessage', msgID);
     this.pendingResends.push(msgID);
     this.sheduleRequest(100);
   };
 
   MtpNetworker.prototype.cleanupSent = function () {
+    console.log('cleanupSent');
+
     var self = this;
     var notEmpty = false;
-    // console.log('clean start', this.dcID/*, this.sentMessages*/)
-    angular.forEach(this.sentMessages, function (message, msgID) {
-      // console.log('clean iter', msgID, message)
-      if (message.notContentRelated && self.pendingMessages[msgID] === undefined) {
-        // console.log('clean notContentRelated', msgID)
-        delete self.sentMessages[msgID];
-      }
-      else if (message.container) {
-        for (var i = 0; i < message.inner.length; i++) {
-          if (self.sentMessages[message.inner[i]] !== undefined) {
-            // console.log('clean failed, found', msgID, message.inner[i], self.sentMessages[message.inner[i]].seq_no)
-            notEmpty = true;
-            return;
-          }
+    ////console.log('clean start', this.dcID/*, this.sentMessages*/);
+    ////angular.forEach(this.sentMessages, function (message, msgID) {
+    if (Object.keys(this.sentMessages).length > 0) {
+      ////this.sentMessages.forEach(function (message, msgID) {        
+      for(var item in this.sentMessages) {
+        var message = this.sentMessages[item];
+        var msgID = message.msg_id;
+        ////console.log('clean iter', msgID, message);
+        if (message.notContentRelated && self.pendingMessages[msgID] === undefined) {
+          ////console.log('clean notContentRelated', msgID);
+          delete self.sentMessages[msgID];
         }
-        // console.log('clean container', msgID)
-        delete self.sentMessages[msgID];
-      } else {
-        notEmpty = true;
+        else if (message.container) {
+          for (var i = 0; i < message.inner.length; i++) {
+            if (self.sentMessages[message.inner[i]] !== undefined) {
+              // console.log('clean failed, found', msgID, message.inner[i], self.sentMessages[message.inner[i]].seq_no)
+              notEmpty = true;
+              return;
+            }
+          }
+          ////console.log('clean container', msgID);
+          delete self.sentMessages[msgID];
+        } else {
+          notEmpty = true;
+        }
+        msgID++;
       }
-    });
+      ////});
+    }
 
     return !notEmpty;
   };
 
   MtpNetworker.prototype.processMessageAck = function (messageID) {
+    console.log('processMessageAck');
+
     var sentMessage = this.sentMessages[messageID];
 
     if (sentMessage && !sentMessage.acked) {
@@ -926,6 +1312,8 @@ export function MtpNetworkerFactory() {
   };
 
   MtpNetworker.prototype.processError = function (rawError) {
+    console.log('processError');
+
     var matches = (rawError.error_message || '').match(/^([A-Z_0-9]+\b)(: (.+))?/) || [];
     rawError.error_code = uintToInt(rawError.error_code);
 
@@ -938,6 +1326,8 @@ export function MtpNetworkerFactory() {
   };
 
   MtpNetworker.prototype.processMessage = function (message, messageID, sessionID) {
+    console.log('processMessage');
+
     var msgidInt = parseInt(messageID.toString(10).substr(0, -10), 10);
 
     if (msgidInt % 2) {
@@ -955,10 +1345,10 @@ export function MtpNetworkerFactory() {
         break;
 
       case 'bad_server_salt':
-        console.log('Bad server salt', message);
+        ////console.log('Bad server salt', message);
         var sentMessage = this.sentMessages[message.bad_msg_id];
         if (!sentMessage || sentMessage.seq_no != message.bad_msg_seqno) {
-          console.log(message.bad_msg_id, message.bad_msg_seqno);
+          ////console.log(message.bad_msg_id, message.bad_msg_seqno);
           throw new Error('[MT] Bad server salt for invalid message');
         }
 
@@ -968,10 +1358,10 @@ export function MtpNetworkerFactory() {
         break;
 
       case 'bad_msg_notification':
-        console.log('Bad msg notification', message);
+        ////console.log('Bad msg notification', message);
         var sentMessage = this.sentMessages[message.bad_msg_id];
         if (!sentMessage || sentMessage.seq_no != message.bad_msg_seqno) {
-          console.log(message.bad_msg_id, message.bad_msg_seqno);
+          ////console.log(message.bad_msg_id, message.bad_msg_seqno);
           throw new Error('[MT] Bad msg notification for invalid message');
         }
 
@@ -979,7 +1369,7 @@ export function MtpNetworkerFactory() {
           if (mtpTimeManager.applyServerTime(
             bigStringInt(messageID).shiftRight(32).toString(10)
           )) {
-            console.log('Update session');
+            ////console.log('Update session');
             this.updateSession();
           }
           var badMessage = this.updateSentMessage(message.bad_msg_id);
@@ -1111,6 +1501,8 @@ export function MtpNetworkerFactory() {
   };
 
   function startAll() {
+    console.log('startAll');
+
     if (akStopped) {
       akStopped = false;
       updatesProcessor({ _: 'new_session_created' }, true);
@@ -1118,14 +1510,20 @@ export function MtpNetworkerFactory() {
   }
 
   function stopAll() {
+    console.log('stopAll');
+
     akStopped = true;
   }
 
   return {
     getNetworker: function (dcID, authKey, serverSalt, options) {
+      console.log('getNetworker');
+
       return new MtpNetworker(dcID, authKey, serverSalt, options);
     },
     setUpdatesProcessor: function (callback) {
+      console.log('setUpdatesProcessor');
+
       updatesProcessor = callback;
     },
     stopAll: stopAll,

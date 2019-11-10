@@ -1,9 +1,8 @@
-import jsbn from 'jsbn';
 import Rusha from 'rusha';
 import { bpe, str2bigInt, copyInt_, copy_, isZero, add_, rightShift_, greater, 
   sub_, eGCD_, equalsInt, one, divide_, bigInt2str, powMod } from './vendor/bigint';
 import LongGoog from './vendor/long';
-import { generateSecureRandomBytes } from './vendor/jsbn_combined';
+import { BigInteger, generateSecureRandomBytes } from './vendor/jsbn_combined';
 
 import * as CryptoJSlib from '@goodmind/node-cryptojs-aes';
 const { CryptoJS } = CryptoJSlib;
@@ -11,11 +10,11 @@ const { CryptoJS } = CryptoJSlib;
 const long = new LongGoog();
 
 export default function bigint(num) {    
-  return new jsbn.BigInteger(num.toString(16), 16);
+  return new BigInteger(num.toString(16), 16);
 }
 
 export function bigStringInt(strNum) {
-  return new jsbn.BigInteger(strNum, 10);
+  return new BigInteger(strNum, 10);
 }
 
 export function dHexDump(bytes) {
@@ -204,7 +203,8 @@ export function bytesToWords(bytes) {
     words[i >>> 2] |= bytes[i] << (24 - (i % 4) * 8);
   }  
     
-  return new CryptoJS.lib.WordArray.init(words, len);
+  var test = new CryptoJS.lib.WordArray.init(words, len);
+  return test;
 }
 
 export function bytesFromWords(wordArray) {
@@ -339,11 +339,11 @@ export function uintToInt(val) {
 export function sha1HashSync(bytes) {
   var rushaInstance = new Rusha(1024 * 1024);
 
-  console.log('SHA-1 hash start', bytes.byteLength || bytes.length);
+  ////console.log('SHA-1 hash start', bytes.byteLength || bytes.length);
 
   var hashBytes = rushaInstance.rawDigest(bytes).buffer;
 
-  console.log('SHA-1 hash finish');
+  ////console.log('SHA-1 hash finish');
 
   return hashBytes;
 }
@@ -354,7 +354,10 @@ export function sha1BytesSync(bytes) {
 
 export function sha256HashSync(bytes) {
   // console.log(dT(), 'SHA-2 hash start', bytes.byteLength || bytes.length)
-  var hashWords = CryptoJS.SHA256(bytesToWords(bytes));
+
+  var words = bytesToWords(bytes);
+
+  var hashWords = CryptoJS.SHA256(words);
   // console.log(dT(), 'SHA-2 hash finish')
 
   var hashBytes = bytesFromWords(hashWords);
@@ -366,9 +369,9 @@ export function rsaEncrypt(publicKey, bytes) {
   bytes = addPadding(bytes, 255);
 
   // console.log('RSA encrypt start')
-  var N = new jsbn.BigInteger(publicKey.modulus, 16);
-  var E = new jsbn.BigInteger(publicKey.exponent, 16);
-  var X = new jsbn.BigInteger(bytes);
+  var N = new BigInteger(publicKey.modulus, 16);
+  var E = new BigInteger(publicKey.exponent, 16);
+  var X = new BigInteger(bytes);
   var encryptedBigInt = X.modPowInt(E, N),
     encryptedBytes = bytesFromBigInt(encryptedBigInt, 256);
   // console.log('RSA encrypt finish')
@@ -423,7 +426,7 @@ export function aesDecryptSync(encryptedBytes, keyBytes, ivBytes) {
 var cr = CryptoJS;
 var aes = CryptoJS.AES;
 
-  console.log('AES decrypt start', encryptedBytes.length);
+  ////console.log('AES decrypt start', encryptedBytes.length);
 
   var decryptedWords = CryptoJS.AES.decrypt({ ciphertext: bytesToWords(encryptedBytes) }, bytesToWords(keyBytes), {
     iv: bytesToWords(ivBytes),
@@ -433,7 +436,7 @@ var aes = CryptoJS.AES;
 
   var bytes = bytesFromWords(decryptedWords);
 
-  console.log('AES decrypt finish');
+  ////console.log('AES decrypt finish');
 
   return bytes;
 }
@@ -450,7 +453,7 @@ export function nextRandomInt(maxValue) {
 }
 
 export function pqPrimeFactorization(pqBytes) {
-  var what = new jsbn.BigInteger(pqBytes);
+  var what = new BigInteger(pqBytes);
   var result = false;
 
   // console.log(dT(), 'PQ start', pqBytes, what.toString(16), what.bitLength())
@@ -501,8 +504,8 @@ export function pqPrimeBigInteger(what) {
       var b = x.clone();
       var c = bigint(q);
 
-      while (!b.equals(jsbn.BigInteger.ZERO)) {
-        if (!b.and(jsbn.BigInteger.ONE).equals(jsbn.BigInteger.ZERO)) {
+      while (!b.equals(BigInteger.ZERO)) {
+        if (!b.and(BigInteger.ONE).equals(BigInteger.ZERO)) {
           c = c.add(a);
           if (c.compareTo(what) > 0) {
             c = c.subtract(what);
@@ -518,14 +521,14 @@ export function pqPrimeBigInteger(what) {
       x = c.clone();
       var z = x.compareTo(y) < 0 ? y.subtract(x) : x.subtract(y);
       g = z.gcd(what);
-      if (!g.equals(jsbn.BigInteger.ONE)) {
+      if (!g.equals(BigInteger.ONE)) {
         break;
       }
       if ((j & (j - 1)) == 0) {
         y = x.clone();
       }
     }
-    if (g.compareTo(jsbn.BigInteger.ONE) > 0) {
+    if (g.compareTo(BigInteger.ONE) > 0) {
       break;
     }
   }
@@ -711,5 +714,5 @@ export function bytesModPow(x, y, m) {
     console.error('mod pow error', e);
   }
 
-  return bytesFromBigInt(new jsbn.BigInteger(x).modPow(new jsbn.BigInteger(y), new jsbn.BigInteger(m)), 256);
+  return bytesFromBigInt(new BigInteger(x).modPow(new BigInteger(y), new BigInteger(m)), 256);
 }

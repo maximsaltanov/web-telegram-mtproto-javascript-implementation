@@ -1,8 +1,5 @@
-// import Config from './config';
 import MtpAuthorizer from './mtpAuthorizer';
-
 import { bytesToHex } from './bin_utils';
-
 import { MtpNetworkerFactory } from './mtpNetworkFactory';
 import $q from 'q';
 
@@ -94,14 +91,69 @@ export default function MtpApiManager() {
   //   });
   // }
 
-  function mtpGetNetworker(dcID, options) {
+  // function mtpGetNetworker(dcID, options) {
+  //   options = options || {};
+
+  //   var cache = cachedNetworkers;
+
+  //   // // var cache = (options.fileUpload || options.fileDownload)
+  //   // //   ? cachedUploadNetworkers
+  //   // //   : cachedNetworkers;
+
+  //   if (!dcID) {
+  //     throw new Exception('get Networker without dcID');
+  //   }
+
+  //   // if (cache[dcID] !== undefined) {
+  //   //   return qSync.when(cache[dcID]);
+  //   // }
+
+  //    var akk = 'dc' + dcID + '_auth_key';
+  //     var ssk = 'dc' + dcID + '_server_salt';
+
+  //   // // return Storage.get(akk, ssk).then(function (result) {
+  //   // //   if (cache[dcID] !== undefined) {
+  //   // //     return cache[dcID];
+  //   // //   }
+
+  //   // //   var authKeyHex = result[0];
+  //   // //   var serverSaltHex = result[1];
+
+  //   // //   // console.log('ass', dcID, authKeyHex, serverSaltHex)
+
+  //   // //   if (authKeyHex && authKeyHex.length == 512) {
+  //   // //     if (!serverSaltHex || serverSaltHex.length != 16) {
+  //   // //       serverSaltHex = 'AAAAAAAAAAAAAAAA';
+  //   // //     }
+
+  //   // //     var authKey = bytesFromHex(authKeyHex);
+  //   // //     var serverSalt = bytesFromHex(serverSaltHex);
+
+  //   // //     return cache[dcID] = MtpNetworkerFactory.getNetworker(dcID, authKey, serverSalt, options);
+  //   // //   }
+
+  //   // //   if (!options.createNetworker) {
+  //   // //     return $q.reject({ type: 'AUTH_KEY_EMPTY', code: 401 });
+  //   // //   }        
+
+  //   return mtpAuthorizer.auth(dcID).then(function (auth) {
+  //     var storeObj = {};
+  //     storeObj[akk] = bytesToHex(auth.authKey);
+  //     storeObj[ssk] = bytesToHex(auth.serverSalt);      
+  //     return cache[dcID] = mtpNetworkerFactory.getNetworker(dcID, auth.authKey, auth.serverSalt, options);      
+      
+  //   }, function (error) {
+  //     console.log('Get networker error', error, error.stack);
+  //     return $q.reject(error);
+  //   });
+  // }
+
+  function mtpGetNetworker (dcID, options) {
     options = options || {};
 
-    var cache = cachedNetworkers;
-
-    // // var cache = (options.fileUpload || options.fileDownload)
-    // //   ? cachedUploadNetworkers
-    // //   : cachedNetworkers;
+    var cache = (options.fileUpload || options.fileDownload)
+      ? cachedUploadNetworkers
+      : cachedNetworkers;
 
     if (!dcID) {
       throw new Exception('get Networker without dcID');
@@ -111,48 +163,23 @@ export default function MtpApiManager() {
     //   return qSync.when(cache[dcID]);
     // }
 
-     var akk = 'dc' + dcID + '_auth_key';
-      var ssk = 'dc' + dcID + '_server_salt';
+    var akk = 'dc' + dcID + '_auth_key';
+    var ssk = 'dc' + dcID + '_server_salt';
 
-    // // return Storage.get(akk, ssk).then(function (result) {
-    // //   if (cache[dcID] !== undefined) {
-    // //     return cache[dcID];
-    // //   }
+    ////return Storage.get(akk, ssk).then(function (result) {
+            
+      return mtpAuthorizer.auth(dcID).then(function (auth) {
+        var storeObj = {};
+        storeObj[akk] = bytesToHex(auth.authKey);
+        storeObj[ssk] = bytesToHex(auth.serverSalt);
+        ////Storage.set(storeObj);
 
-    // //   var authKeyHex = result[0];
-    // //   var serverSaltHex = result[1];
-
-    // //   // console.log('ass', dcID, authKeyHex, serverSaltHex)
-
-    // //   if (authKeyHex && authKeyHex.length == 512) {
-    // //     if (!serverSaltHex || serverSaltHex.length != 16) {
-    // //       serverSaltHex = 'AAAAAAAAAAAAAAAA';
-    // //     }
-
-    // //     var authKey = bytesFromHex(authKeyHex);
-    // //     var serverSalt = bytesFromHex(serverSaltHex);
-
-    // //     return cache[dcID] = MtpNetworkerFactory.getNetworker(dcID, authKey, serverSalt, options);
-    // //   }
-
-    // //   if (!options.createNetworker) {
-    // //     return $q.reject({ type: 'AUTH_KEY_EMPTY', code: 401 });
-    // //   }        
-
-    return mtpAuthorizer.auth(dcID).then(function (auth) {
-      var storeObj = {};
-      storeObj[akk] = bytesToHex(auth.authKey);
-      storeObj[ssk] = bytesToHex(auth.serverSalt);
-      ////Storage.set(storeObj)
-
-      console.log('Get networker test');
-
-      return cache[dcID] = mtpNetworkerFactory.getNetworker(dcID, auth.authKey, auth.serverSalt, options);      
-      
-    }, function (error) {
-      console.log('Get networker error', error, error.stack);
-      return $q.reject(error);
-    });
+        return cache[dcID] = mtpNetworkerFactory.getNetworker(dcID, auth.authKey, auth.serverSalt, options);
+      }, function (error) {
+        console.log('Get networker error', error, error.stack);
+        return $q.reject(error);
+      });
+    ////})
   }
 
   function mtpInvokeApi(method, params, options) {
@@ -205,7 +232,9 @@ export default function MtpApiManager() {
     var stack = (new Error()).stack || 'empty stack';
 
     var performRequest = function (networker) {
-      return (cachedNetworker = networker).wrapApiCall(method, params, options).then(
+      var performRequestPromise = (cachedNetworker = networker).wrapApiCall(method, params, options);
+
+      return performRequestPromise.then(
         function (result) {
           deferred.resolve(result);
         },
