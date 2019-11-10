@@ -1,4 +1,5 @@
 const Path = require('path');
+// const webpack = require('webpack');
 const { CleanWebpackPlugin } = require('clean-webpack-plugin');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
@@ -17,7 +18,10 @@ module.exports = {
       name: false
     }
   },
-  plugins: [
+  plugins: [    
+    // new webpack.ProvidePlugin({
+    //   CryptoJS: Path.resolve(__dirname, '../src/lib/mtproto/vendor/crypto.js')
+    // }),
     new CleanWebpackPlugin(),
     new CopyWebpackPlugin([
       { from: Path.resolve(__dirname, '../public'), to: 'public' }

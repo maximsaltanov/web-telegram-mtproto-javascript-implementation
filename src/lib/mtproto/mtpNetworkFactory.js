@@ -1,11 +1,16 @@
-import Config from '../config';
+// import Config from '../config';
 
 import MtpDcConfigurator from './mtpDcConfigurator';
 import TLSerialization from './tlSerialization';
 import TLDeserialization from './tlDeserialization';
 import MtpTimeManager from './mtpTimeManager';
 import CryptoWorker from './cryptoWorker';
-import httpClient from './http';
+// import httpClient from './http';
+import axios from 'axios';
+
+const httpClient2 = axios.create();
+delete httpClient2.defaults.headers.post['Content-Type'];
+delete httpClient2.defaults.headers.common['Accept'];
 
 import {
   nextRandomInt, bytesCmp, bytesToHex, sha1BytesSync, bytesToArrayBuffer, convertToUint8Array, bufferConcat
@@ -34,11 +39,11 @@ export function MtpNetworkerFactory() {
 
     this.dcID = dcID;
 
-    this.authKey = authKey;
+    this.authKey = authKey;   
     this.authKeyUint8 = convertToUint8Array(authKey);
     this.authKeyID = sha1BytesSync(authKey).slice(-8);
 
-    this.serverSalt = serverSalt;
+    this.serverSalt = serverSalt;    
 
     this.upload = options.fileUpload || options.fileDownload || false;
 
@@ -191,7 +196,7 @@ export function MtpNetworkerFactory() {
     var serializer = new TLSerialization({ mtproto: true });
     serializer.storeObject(object, 'Object');
 
-    var messageID = MtpTimeManager.generateID();
+    var messageID = mtpTimeManager.generateID();
     var seqNo = this.generateSeqNo(options.notContentRelated);
     var message = {
       msg_id: messageID,
@@ -213,12 +218,15 @@ export function MtpNetworkerFactory() {
 
     if (!this.connectionInited) {
       serializer.storeInt(0xda9b0d0d, 'invokeWithLayer');
-      serializer.storeInt(Config.Schema.API.layer, 'layer');
+      ////serializer.storeInt(Config.Schema.API.layer, 'layer');
+      serializer.storeInt(74, 'layer');
       serializer.storeInt(0xc7481da6, 'initConnection');
-      serializer.storeInt(Config.App.id, 'api_id');
+      ////serializer.storeInt(Config.App.id, 'api_id');
+      serializer.storeInt(2496, 'api_id');
       serializer.storeString(navigator.userAgent || 'Unknown UserAgent', 'device_model');
       serializer.storeString(navigator.platform || 'Unknown Platform', 'system_version');
-      serializer.storeString(Config.App.version, 'app_version');
+      ////serializer.storeString(Config.App.version, 'app_version');
+      serializer.storeString("0.7.0", 'app_version');
       serializer.storeString(navigator.language || 'en', 'system_lang_code');
       serializer.storeString('', 'lang_pack');
       serializer.storeString(navigator.language || 'en', 'lang_code');
@@ -358,39 +366,64 @@ export function MtpNetworkerFactory() {
   };
 
   MtpNetworker.prototype.getAesKeyIv = function (msgKey, isOut) {
+    var deferred = $q.defer();
+    
     console.log('getAesKeyIv');
 
     var authKey = this.authKeyUint8;
     var x = isOut ? 0 : 8;
     var sha2aText = new Uint8Array(52);
     var sha2bText = new Uint8Array(52);
-    var promises = {};
+    ////var promises = {};
 
     sha2aText.set(msgKey, 0);
     sha2aText.set(authKey.subarray(x, x + 36), 16);                
-    promises.sha2a = cryptoWorker.sha256Hash(sha2aText);
+    ////promises.sha2a = cryptoWorker.sha256Hash(sha2aText);
 
     sha2bText.set(authKey.subarray(40 + x, 40 + x + 36), 0);
     sha2bText.set(msgKey, 36);        
-    promises.sha2b = cryptoWorker.sha256Hash(sha2bText);
+    ////promises.sha2b = cryptoWorker.sha256Hash(sha2bText);
 
-    return $q.all(promises).then(function (result) {
-      console.log('$q.all(promises)');
-      var aesKey = new Uint8Array(32);
-      var aesIv = new Uint8Array(32);
-      var sha2a = new Uint8Array(result.sha2a);
-      var sha2b = new Uint8Array(result.sha2b);
+    cryptoWorker.sha256Hash(sha2aText).then((sha2aRes) => {
+      var sha2aResult = sha2aRes;
 
-      aesKey.set(sha2a.subarray(0, 8));
-      aesKey.set(sha2b.subarray(8, 24), 8);
-      aesKey.set(sha2a.subarray(24, 32), 24);
-
-      aesIv.set(sha2b.subarray(0, 8));
-      aesIv.set(sha2a.subarray(8, 24), 8);
-      aesIv.set(sha2b.subarray(24, 32), 24);
-
-      return [aesKey, aesIv];
+      cryptoWorker.sha256Hash(sha2bText).then((sha2bRes) => {
+        var aesKey = new Uint8Array(32);
+        var aesIv = new Uint8Array(32);
+        var sha2a = new Uint8Array(sha2aResult);
+        var sha2b = new Uint8Array(sha2bRes);
+  
+        aesKey.set(sha2a.subarray(0, 8));
+        aesKey.set(sha2b.subarray(8, 24), 8);
+        aesKey.set(sha2a.subarray(24, 32), 24);
+  
+        aesIv.set(sha2b.subarray(0, 8));
+        aesIv.set(sha2a.subarray(8, 24), 8);
+        aesIv.set(sha2b.subarray(24, 32), 24);
+  
+        deferred.resolve([aesKey, aesIv]);
+      });
     });
+
+    return deferred.promise;
+
+    // return $q.all(promises).then(function (result) {
+    //   console.log('$q.all(promises)');
+    //   var aesKey = new Uint8Array(32);
+    //   var aesIv = new Uint8Array(32);
+    //   var sha2a = new Uint8Array(result.sha2a);
+    //   var sha2b = new Uint8Array(result.sha2b);
+
+    //   aesKey.set(sha2a.subarray(0, 8));
+    //   aesKey.set(sha2b.subarray(8, 24), 8);
+    //   aesKey.set(sha2a.subarray(24, 32), 24);
+
+    //   aesIv.set(sha2b.subarray(0, 8));
+    //   aesIv.set(sha2a.subarray(8, 24), 8);
+    //   aesIv.set(sha2b.subarray(24, 32), 24);
+
+    //   return [aesKey, aesIv];
+    // });
   };
 
   MtpNetworker.prototype.checkConnection = function (event) {
@@ -557,7 +590,7 @@ export function MtpNetworkerFactory() {
           delete self.pendingMessages[messageID];
         ////}
 
-        messageID++;
+        // messageID++;
       }
       ////}); 
     } 
@@ -616,9 +649,9 @@ export function MtpNetworkerFactory() {
 
       this.sentMessages[message.msg_id] = containerSentMessage;
 
-      if (Config.Modes.debug) {
-        console.log('Container', innerMessages, message.msg_id, message.seq_no);
-      }
+      // if (Config.Modes.debug) {
+      //   console.log('Container', innerMessages, message.msg_id, message.seq_no);
+      // }
     } else {
       if (message.noResponse) {
         noResponseMsgs.push(message.msg_id);
@@ -731,263 +764,6 @@ export function MtpNetworkerFactory() {
     var self = this;
     options = options || {};
 
-    // // var arr = [
-    // //   220,
-    // //   248,
-    // //   241,
-    // //   115,
-    // //   2,
-    // //   0,
-    // //   0,
-    // //   0,
-    // //   204,
-    // //   235,
-    // //   5,
-    // //   106,
-    // //   25,
-    // //   165,
-    // //   199,
-    // //   93,
-    // //   1,
-    // //   0,
-    // //   0,
-    // //   0,
-    // //   164,
-    // //   0,
-    // //   0,
-    // //   0,
-    // //   13,
-    // //   13,
-    // //   155,
-    // //   218,
-    // //   74,
-    // //   0,
-    // //   0,
-    // //   0,
-    // //   166,
-    // //   29,
-    // //   72,
-    // //   199,
-    // //   192,
-    // //   9,
-    // //   0,
-    // //   0,
-    // //   114,
-    // //   77,
-    // //   111,
-    // //   122,
-    // //   105,
-    // //   108,
-    // //   108,
-    // //   97,
-    // //   47,
-    // //   53,
-    // //   46,
-    // //   48,
-    // //   32,
-    // //   40,
-    // //   87,
-    // //   105,
-    // //   110,
-    // //   100,
-    // //   111,
-    // //   119,
-    // //   115,
-    // //   32,
-    // //   78,
-    // //   84,
-    // //   32,
-    // //   49,
-    // //   48,
-    // //   46,
-    // //   48,
-    // //   59,
-    // //   32,
-    // //   87,
-    // //   105,
-    // //   110,
-    // //   54,
-    // //   52,
-    // //   59,
-    // //   32,
-    // //   120,
-    // //   54,
-    // //   52,
-    // //   41,
-    // //   32,
-    // //   65,
-    // //   112,
-    // //   112,
-    // //   108,
-    // //   101,
-    // //   87,
-    // //   101,
-    // //   98,
-    // //   75,
-    // //   105,
-    // //   116,
-    // //   47,
-    // //   53,
-    // //   51,
-    // //   55,
-    // //   46,
-    // //   51,
-    // //   54,
-    // //   32,
-    // //   40,
-    // //   75,
-    // //   72,
-    // //   84,
-    // //   77,
-    // //   76,
-    // //   44,
-    // //   32,
-    // //   108,
-    // //   105,
-    // //   107,
-    // //   101,
-    // //   32,
-    // //   71,
-    // //   101,
-    // //   99,
-    // //   107,
-    // //   111,
-    // //   41,
-    // //   32,
-    // //   67,
-    // //   104,
-    // //   114,
-    // //   111,
-    // //   109,
-    // //   101,
-    // //   47,
-    // //   55,
-    // //   56,
-    // //   46,
-    // //   48,
-    // //   46,
-    // //   51,
-    // //   57,
-    // //   48,
-    // //   52,
-    // //   46,
-    // //   57,
-    // //   55,
-    // //   32,
-    // //   83,
-    // //   97,
-    // //   102,
-    // //   97,
-    // //   114,
-    // //   105,
-    // //   47,
-    // //   53,
-    // //   51,
-    // //   55,
-    // //   46,
-    // //   51,
-    // //   54,
-    // //   0,
-    // //   5,
-    // //   87,
-    // //   105,
-    // //   110,
-    // //   51,
-    // //   50,
-    // //   0,
-    // //   0,
-    // //   5,
-    // //   48,
-    // //   46,
-    // //   55,
-    // //   46,
-    // //   48,
-    // //   0,
-    // //   0,
-    // //   2,
-    // //   101,
-    // //   110,
-    // //   0,
-    // //   0,
-    // //   0,
-    // //   0,
-    // //   0,
-    // //   2,
-    // //   101,
-    // //   110,
-    // //   0,
-    // //   38,
-    // //   48,
-    // //   179,
-    // //   31,
-    // //   252,
-    // //   195,
-    // //   38,
-    // //   106,
-    // //   25,
-    // //   165,
-    // //   199,
-    // //   93,
-    // //   3,
-    // //   0,
-    // //   0,
-    // //   0,
-    // //   16,
-    // //   0,
-    // //   0,
-    // //   0,
-    // //   159,
-    // //   53,
-    // //   153,
-    // //   146,
-    // //   244,
-    // //   1,
-    // //   0,
-    // //   0,
-    // //   150,
-    // //   0,
-    // //   0,
-    // //   0,
-    // //   184,
-    // //   11,
-    // //   0,
-    // //   0
-    // // ];
-
-    // //   var msgBody = new Int32Array(220);        
-    // //   var i = 0;
-    // //   arr.forEach((ite) => {
-    // //     msgBody[i] = ite;
-    // //     i++;
-    // //   });
-
-    // // message.body = msgBody;
-
-    // // this.serverSalt = [
-    // //   80,
-    // //   86,
-    // //   120,
-    // //   141,
-    // //   216,
-    // //   161,
-    // //   75,
-    // //   8
-    // // ];
-
-    // // this.sessionID = [
-    // //   186,
-    // //   161,
-    // //   203,
-    // //   6,
-    // //   251,
-    // //   52,
-    // //   37,
-    // //   223
-    // // ];
-
-    // // message.msg_id = 6757551294468230588;
-    // // message.seq_no = 4;
-    
     var data = new TLSerialization({ startMaxLength: message.body.length + 2048 });
 
     data.storeIntBytes(this.serverSalt, 64, 'salt');
@@ -1005,30 +781,7 @@ export function MtpNetworkerFactory() {
     var padding = new Array(paddingLength);
 
     padding = generateSecureRandomBytes(padding);    
-
-    // padding = [
-    //     48,
-    //     208,
-    //     211,
-    //     87,
-    //     46,
-    //     41,
-    //     187,
-    //     34,
-    //     220,
-    //     250,
-    //     55,
-    //     85,
-    //     51,
-    //     241,
-    //     28,
-    //     127,
-    //     221,
-    //     197,
-    //     54,
-    //     195
-    //   ];
-
+    
     var dataWithPadding = bufferConcat(dataBuffer, padding);
     // console.log(dT(), 'Adding padding', dataBuffer, padding, dataWithPadding)
     // console.log(dT(), 'auth_key_id', bytesToHex(self.authKeyID))
@@ -1060,9 +813,9 @@ export function MtpNetworkerFactory() {
         
         console.log("url", url);
         console.log("requestData", requestData);
-        console.log("options", options);      
+        console.log("options", options);              
 
-        requestPromise = httpClient.post(url, requestData, options);
+        requestPromise = httpClient2.post(url, requestData, options);        
 
         // requestPromise = httpClient.post(url, requestData, {
         //   responseType: 'arraybuffer',
@@ -1231,14 +984,15 @@ export function MtpNetworkerFactory() {
 
     ////$timeout.cancel(this.nextReqPromise);
 
-    if (delay > 0) {
-      ////this.nextReqPromise = $timeout(this.performSheduledRequest.bind(this), delay || 0);
-      this.nextReqPromise = setTimeout(self.performSheduledRequest.bind(self), delay || 0);
-    } else {
-      ////self.performSheduledRequest.bind(self);
-      ////setZeroTimeout(this.performSheduledRequest.bind(this));
-      this.performSheduledRequest();
-    }
+    // if (delay > 0) {
+    //   ////this.nextReqPromise = $timeout(this.performSheduledRequest.bind(this), delay || 0);
+    //   this.nextReqPromise = setTimeout(self.performSheduledRequest.bind(self), delay || 0);
+    // } else {
+    //   ////self.performSheduledRequest.bind(self);
+    //   ////setZeroTimeout(this.performSheduledRequest.bind(this));
+    //   this.performSheduledRequest();
+    // }
+    this.performSheduledRequest();
 
     this.nextReq = nextReq;
   };
@@ -1461,9 +1215,9 @@ export function MtpNetworkerFactory() {
             }
           } else {
             if (deferred) {
-              if (Config.Modes.debug) {
-                console.log('Rpc response', message.result);
-              } else {
+              // if (Config.Modes.debug) {
+              //   console.log('Rpc response', message.result);
+              // } else {
                 var dRes = message.result._;
 
                 if (!dRes) {
@@ -1475,7 +1229,7 @@ export function MtpNetworkerFactory() {
                 }
 
                 console.log('Rpc response', dRes);
-              }
+              //}
 
               sentMessage.deferred.resolve(message.result);
             }

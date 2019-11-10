@@ -4,10 +4,10 @@ import { bpe, str2bigInt, copyInt_, copy_, isZero, add_, rightShift_, greater,
 import LongGoog from './vendor/long';
 import { BigInteger, generateSecureRandomBytes } from './vendor/jsbn_combined';
 
+const long = new LongGoog();
+
 import * as CryptoJSlib from '@goodmind/node-cryptojs-aes';
 const { CryptoJS } = CryptoJSlib;
-
-const long = new LongGoog();
 
 export default function bigint(num) {    
   return new BigInteger(num.toString(16), 16);
@@ -32,7 +32,7 @@ export function dHexDump(bytes) {
     arr.push((bytes[i] < 16 ? '0' : '') + bytes[i].toString(16));
   }
 
-  console.log(arr.join(''));
+  ////console.log(arr.join(''));
 }
 
 export function bytesToHex(bytes) {
@@ -442,9 +442,9 @@ var aes = CryptoJS.AES;
 }
 
 export function gzipUncompress(bytes) {
-  console.log('Gzip uncompress start');
+  ////console.log('Gzip uncompress start');
   var result = (new Zlib.Gunzip(bytes)).decompress();
-  console.log('Gzip uncompress finish');
+  ////console.log('Gzip uncompress finish');
   return result;
 }
 
@@ -458,7 +458,7 @@ export function pqPrimeFactorization(pqBytes) {
 
   // console.log(dT(), 'PQ start', pqBytes, what.toString(16), what.bitLength())
 
-console.log(bpe);
+////console.log(bpe);
 
   try {
     result = pqPrimeLeemon(str2bigInt(what.toString(16), 16, Math.ceil(64 / bpe) + 1));

@@ -164,6 +164,7 @@ TLSerialization.prototype.storeBytes = function (bytes, field) {
     // this.debug && console.log('>>>', bytesToHex(bytes), (field || '') + ':bytes');
 
     var len = bytes.byteLength || bytes.length;
+    
     this.checkLength(len + 8);
     if (len <= 253) {
         this.byteView[this.offset++] = len;

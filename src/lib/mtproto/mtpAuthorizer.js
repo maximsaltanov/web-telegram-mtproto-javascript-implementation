@@ -11,9 +11,11 @@ import {
     aesEncryptSync, rsaEncrypt, bytesFromHex,
     aesDecryptSync, bytesToArrayBuffer, bytesXor
 } from './bin_utils';
+
 import $q from 'q';
 
 import { BigInteger, generateSecureRandomBytes } from './vendor/jsbn_combined';
+///import { generateSecureRandomBytes } from './vendor/jsbn_combined';
 
 const mtpDcConfigurator = new MtpDcConfigurator();
 const mtpRsaKeysManager = new MtpRsaKeysManager();
@@ -96,7 +98,7 @@ export default function MtpAuthorizer() {
 
         request.storeMethod('req_pq', { nonce: auth.nonce });
 
-        console.log('Send req_pq', bytesToHex(auth.nonce));
+        ////console.log('Send req_pq', bytesToHex(auth.nonce));
 
         mtpSendPlainRequest(auth.dcID, request.getBuffer()).then(function (deserializer) {
 

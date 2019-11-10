@@ -1,7 +1,6 @@
-import Config from '../config';
 import $q from 'q';
 import {
-    convertToUint8Array, sha1HashSync, sha256HashSync, convertToArrayBuffer,
+    sha1HashSync, sha256HashSync, convertToArrayBuffer,
     aesEncryptSync, aesDecryptSync, convertToByteArray, pqPrimeFactorization,
     bytesModPow
 } from './bin_utils';
@@ -11,9 +10,12 @@ export default function CryptoWorker() {
     var naClEmbed = false;
     // var taskID = 0;
     // var awaiting = {};
-    var webCrypto = Config.Modes.webcrypto && window.crypto && (window.crypto.subtle || window.crypto.webkitSubtle); /* || window.msCrypto && window.msCrypto.subtle*/
-    var useSha1Crypto = webCrypto && webCrypto.digest !== undefined;
-    var useSha256Crypto = webCrypto && webCrypto.digest !== undefined;
+    // var webCrypto = Config.Modes.webcrypto && window.crypto && (window.crypto.subtle || window.crypto.webkitSubtle); /* || window.msCrypto && window.msCrypto.subtle*/
+    // var useSha1Crypto = webCrypto && webCrypto.digest !== undefined;
+    // var useSha256Crypto = webCrypto && webCrypto.digest !== undefined;
+    var webCrypto = false;
+    var useSha1Crypto = false;
+    var useSha256Crypto = false;
 
     function performTaskWorker(taskName, data, embed) {
 
@@ -109,24 +111,24 @@ export default function CryptoWorker() {
         sha1Hash: function (bytes) {
             var deferred = $q.defer();
 
-            if (useSha1Crypto) {
+            // if (useSha1Crypto) {
 
-                // We don't use buffer since typedArray.subarray(...).buffer gives the whole buffer and not sliced one. webCrypto.digest supports typed array
+            //     // We don't use buffer since typedArray.subarray(...).buffer gives the whole buffer and not sliced one. webCrypto.digest supports typed array
                 
-                var bytesTyped = Array.isArray(bytes) ? convertToUint8Array(bytes) : bytes;
-                // console.log(dT(), 'Native sha1 start')
-                webCrypto.digest({ name: 'SHA-1' }, bytesTyped).then(function (digest) {
-                    ;
-                    // console.log(dT(), 'Native sha1 done')
-                    deferred.resolve(digest);
-                }, function (e) {
-                    console.error('Crypto digest error', e);
-                    useSha1Crypto = false;
-                    deferred.resolve(sha1HashSync(bytes));
-                });
+            //     var bytesTyped = Array.isArray(bytes) ? convertToUint8Array(bytes) : bytes;
+            //     // console.log(dT(), 'Native sha1 start')
+            //     webCrypto.digest({ name: 'SHA-1' }, bytesTyped).then(function (digest) {
+            //         ;
+            //         // console.log(dT(), 'Native sha1 done')
+            //         deferred.resolve(digest);
+            //     }, function (e) {
+            //         console.error('Crypto digest error', e);
+            //         useSha1Crypto = false;
+            //         deferred.resolve(sha1HashSync(bytes));
+            //     });
 
-                return deferred.promise;
-            }
+            //     return deferred.promise;
+            // }
 
             ////return sha1HashSync(bytes);
             deferred.resolve(sha1HashSync(bytes));
@@ -135,20 +137,20 @@ export default function CryptoWorker() {
         sha256Hash: function (bytes) {
             var deferred = $q.defer();
 
-            if (useSha256Crypto) {                
-                var bytesTyped = Array.isArray(bytes) ? convertToUint8Array(bytes) : bytes;
-                // console.log(dT(), 'Native sha1 start')
-                webCrypto.digest({ name: 'SHA-256' }, bytesTyped).then(function (digest) {
-                    // console.log(dT(), 'Native sha1 done')
-                    deferred.resolve(digest);
-                }, function (e) {
-                    console.error('Crypto digest error', e);
-                    useSha256Crypto = false;
-                    deferred.resolve(sha256HashSync(bytes));
-                });
+            // if (useSha256Crypto) {                
+            //     var bytesTyped = Array.isArray(bytes) ? convertToUint8Array(bytes) : bytes;
+            //     // console.log(dT(), 'Native sha1 start')
+            //     webCrypto.digest({ name: 'SHA-256' }, bytesTyped).then(function (digest) {
+            //         // console.log(dT(), 'Native sha1 done')
+            //         deferred.resolve(digest);
+            //     }, function (e) {
+            //         console.error('Crypto digest error', e);
+            //         useSha256Crypto = false;
+            //         deferred.resolve(sha256HashSync(bytes));
+            //     });
 
-                return deferred.promise;
-            }
+            //     return deferred.promise;
+            // }
 
             ////return sha256HashSync(bytes);
             deferred.resolve(sha256HashSync(bytes));
@@ -156,69 +158,70 @@ export default function CryptoWorker() {
         },
         aesEncrypt: function (bytes, keyBytes, ivBytes) {
             var deferred = $q.defer();        
-            var result = null;    
+            // var result = null;    
 
-            if (naClEmbed) {
-                result = performTaskWorker('aes-encrypt', {
-                    bytes: addPadding(convertToArrayBuffer(bytes)),
-                    keyBytes: convertToArrayBuffer(keyBytes),
-                    ivBytes: convertToArrayBuffer(ivBytes)
-                }, naClEmbed);
-            }
-            else {
-                result = convertToArrayBuffer(aesEncryptSync(bytes, keyBytes, ivBytes));
-            }
+            // if (naClEmbed) {
+            //     result = performTaskWorker('aes-encrypt', {
+            //         bytes: addPadding(convertToArrayBuffer(bytes)),
+            //         keyBytes: convertToArrayBuffer(keyBytes),
+            //         ivBytes: convertToArrayBuffer(ivBytes)
+            //     }, naClEmbed);
+            // }
+            // else {
+            //     result = convertToArrayBuffer(aesEncryptSync(bytes, keyBytes, ivBytes));
+            // }
             
-            deferred.resolve(result);
+            deferred.resolve(convertToArrayBuffer(aesEncryptSync(bytes, keyBytes, ivBytes)));
             return deferred.promise;
         },
         aesDecrypt: function (encryptedBytes, keyBytes, ivBytes) {
             var deferred = $q.defer();        
-            var result = null;    
+            // var result = null;    
 
-            if (naClEmbed) {
-                result = performTaskWorker('aes-decrypt', {
-                    encryptedBytes: addPadding(convertToArrayBuffer(encryptedBytes)),
-                    keyBytes: convertToArrayBuffer(keyBytes),
-                    ivBytes: convertToArrayBuffer(ivBytes)
-                }, naClEmbed);
-            }
-            else {  
-                result = convertToArrayBuffer(aesDecryptSync(encryptedBytes, keyBytes, ivBytes));
-            }
+            // if (naClEmbed) {
+            //     result = performTaskWorker('aes-decrypt', {
+            //         encryptedBytes: addPadding(convertToArrayBuffer(encryptedBytes)),
+            //         keyBytes: convertToArrayBuffer(keyBytes),
+            //         ivBytes: convertToArrayBuffer(ivBytes)
+            //     }, naClEmbed);
+            // }
+            // else {  
+            //     result = convertToArrayBuffer(aesDecryptSync(encryptedBytes, keyBytes, ivBytes));
+            // }
 
-            deferred.resolve(result);
+            ////deferred.resolve(aesDecryptSync(encryptedBytes, keyBytes, ivBytes));
+            deferred.resolve(convertToArrayBuffer(aesDecryptSync(encryptedBytes, keyBytes, ivBytes)));
             return deferred.promise;            
         },
         factorize: function (bytes) {
 
             var deferred = $q.defer();        
-            var result = null;    
+            // var result = null;    
             
             bytes = convertToByteArray(bytes);
-            if (naClEmbed && bytes.length <= 8) {
-                result = performTaskWorker('factorize', { bytes: bytes }, naClEmbed);
-            }
-            else 
-            // if (webWorker) {
-                result = performTaskWorker('factorize', { bytes: bytes });
+            // if (naClEmbed && bytes.length <= 8) {
+            //     result = performTaskWorker('factorize', { bytes: bytes }, naClEmbed);
             // }
+            // else 
+            // // if (webWorker) {
+            //     result = performTaskWorker('factorize', { bytes: bytes });
+            // // }
 
             ////return pqPrimeFactorization(bytes);
 
-            deferred.resolve(result);
+            deferred.resolve(pqPrimeFactorization(bytes));
             return deferred.promise;            
         },
         modPow: function (x, y, m) {
             // if (webWorker) {
-                return performTaskWorker('mod-pow', {
-                    x: x,
-                    y: y,
-                    m: m
-                });
-            // }
+            //     return performTaskWorker('mod-pow', {
+            //         x: x,
+            //         y: y,
+            //         m: m
+            //     });
+            // // }
 
-            ////return bytesModPow(x, y, m);
+            return bytesModPow(x, y, m);
         }
     };
 };
