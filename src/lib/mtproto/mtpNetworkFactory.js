@@ -13,7 +13,7 @@ delete httpClient2.defaults.headers.post['Content-Type'];
 delete httpClient2.defaults.headers.common['Accept'];
 
 import {
-  nextRandomInt, bytesCmp, bytesToHex, sha1BytesSync, bytesToArrayBuffer, convertToUint8Array, bufferConcat
+  nextRandomInt, bytesCmp, bytesToHex, sha1BytesSync, bytesToArrayBuffer, convertToUint8Array, bufferConcat, longToBytes
 } from './bin_utils';
 
 import $q from 'q';
@@ -33,7 +33,7 @@ export function MtpNetworkerFactory() {
   var xhrSendBuffer = !('ArrayBufferView' in window) && (chromeVersion > 0 && chromeVersion < 30);  
   
   function MtpNetworker(dcID, authKey, serverSalt, options) {
-    console.log('MtpNetworker');
+    //console.log('MtpNetworker');
 
     options = options || {};
 
@@ -76,7 +76,7 @@ export function MtpNetworkerFactory() {
   }
 
   MtpNetworker.prototype.updateSession = function () {
-    console.log('updateSession');
+    ///console.log('updateSession');
     this.seqNo = 0;
     this.prevSessionID = this.sessionID;
     this.sessionID = new Array(8);
@@ -107,7 +107,7 @@ export function MtpNetworkerFactory() {
   // };
 
   MtpNetworker.prototype.updateSentMessage = function (sentMessageID) {
-    console.log('updateSentMessage');
+    //console.log('updateSentMessage');
 
     var sentMessage = this.sentMessages[sentMessageID];
     if (!sentMessage) {
@@ -154,7 +154,7 @@ export function MtpNetworkerFactory() {
   };
 
   MtpNetworker.prototype.generateSeqNo = function (notContentRelated) {
-    console.log('generateSeqNo');
+    //console.log('generateSeqNo');
 
     var seqNo = this.seqNo * 2;
 
@@ -167,7 +167,7 @@ export function MtpNetworkerFactory() {
   };
 
   MtpNetworker.prototype.wrapMtpCall = function (method, params, options) {
-    console.log('wrapMtpCall');
+    //console.log('wrapMtpCall');
 
     var serializer = new TLSerialization({ mtproto: true });
 
@@ -189,7 +189,7 @@ export function MtpNetworkerFactory() {
   };
 
   MtpNetworker.prototype.wrapMtpMessage = function (object, options) {
-    console.log('wrapMtpMessage');
+    //console.log('wrapMtpMessage');
 
     options = options || {};
 
@@ -212,7 +212,7 @@ export function MtpNetworkerFactory() {
   };
 
   MtpNetworker.prototype.wrapApiCall = function (method, params, options) {
-    console.log('wrapApiCall');
+    //console.log('wrapApiCall');
 
     var serializer = new TLSerialization(options);
 
@@ -251,14 +251,14 @@ export function MtpNetworkerFactory() {
     ////if (Config.Modes.debug) {
     //  console.log('Api call', method, params, messageID, seqNo, options);
     // } else {
-      console.log('Api call', method);
+      //console.log('Api call', method);
     // }
 
     return this.pushMessage(message, options);
   };
 
   MtpNetworker.prototype.checkLongPoll = function (force) {
-    console.log('checkLongPoll');
+    //console.log('checkLongPoll');
 
     var isClean = this.cleanupSent();
     ////console.log('Check lp', this.longPollPending, new Date().getTime(), this.dcID, isClean);
@@ -286,7 +286,7 @@ export function MtpNetworkerFactory() {
   };
 
   MtpNetworker.prototype.sendLongPoll = function () {
-    console.log('sendLongPoll');
+    //console.log('sendLongPoll');
 
     var maxWait = 25000;
     var self = this;
@@ -313,7 +313,7 @@ export function MtpNetworkerFactory() {
   };
 
   MtpNetworker.prototype.pushMessage = function (message, options) {
-    console.log('pushMessage', message);
+    //console.log('pushMessage', message);
 
     var deferred = $q.defer();
     
@@ -335,7 +335,7 @@ export function MtpNetworkerFactory() {
   };
 
   MtpNetworker.prototype.pushResend = function (messageID, delay) {
-    console.log('pushResend');
+    //console.log('pushResend');
 
     var value = delay ? new Date().getTime() + delay : 0;
     var sentMessage = this.sentMessages[messageID];
@@ -353,7 +353,7 @@ export function MtpNetworkerFactory() {
 
   MtpNetworker.prototype.getMsgKey = function (dataWithPadding, isOut) {    
 
-    console.log('getMsgKey');
+    //console.log('getMsgKey');
 
     var authKey = this.authKeyUint8;
     var x = isOut ? 0 : 8;
@@ -368,7 +368,7 @@ export function MtpNetworkerFactory() {
   MtpNetworker.prototype.getAesKeyIv = function (msgKey, isOut) {
     var deferred = $q.defer();
     
-    console.log('getAesKeyIv');
+    //console.log('getAesKeyIv');
 
     var authKey = this.authKeyUint8;
     var x = isOut ? 0 : 8;
@@ -430,7 +430,7 @@ export function MtpNetworkerFactory() {
 
     //$rootScope.offlineConnecting = true;
 
-    console.log('Check connection', event);
+    //console.log('Check connection', event);
 
     ////$timeout.cancel(this.checkConnectionPromise);
     clearTimeout(this.checkConnectionPromise);
@@ -451,7 +451,7 @@ export function MtpNetworkerFactory() {
       //delete $rootScope.offlineConnecting;
       self.toggleOffline(false);
     }, function () {
-      console.log('Delay ', self.checkConnectionPeriod * 1000);
+      //console.log('Delay ', self.checkConnectionPeriod * 1000);
 
       self.checkConnectionPromise = setTimeout(self.checkConnection.bind(self), parseInt(self.checkConnectionPeriod * 1000));
       ////self.checkConnectionPromise = $timeout(self.checkConnection.bind(self), parseInt(self.checkConnectionPeriod * 1000));
@@ -465,8 +465,9 @@ export function MtpNetworkerFactory() {
     });
   };
 
-  MtpNetworker.prototype.toggleOffline = function (enabled) {
-    console.log('toggleOffline');
+  MtpNetworker.prototype.toggleOffline = function (enabled) {        
+
+    //console.log('toggleOffline');    
 
     // console.log('toggle ', enabled, this.dcID, this.iii)
     if (this.offline !== undefined && this.offline == enabled) {
@@ -510,11 +511,11 @@ export function MtpNetworkerFactory() {
   };
 
   MtpNetworker.prototype.performSheduledRequest = function () {
-    console.log('performSheduledRequest');
+    //console.log('performSheduledRequest');
 
     // console.log(dT(), 'sheduled', this.dcID, this.iii)
     if (this.offline || akStopped) {
-      console.log('Cancel sheduled');
+      //console.log('Cancel sheduled');
       return false;
     }
     delete this.nextReq;
@@ -595,7 +596,7 @@ export function MtpNetworkerFactory() {
       ////}); 
     } 
 
-    console.log(this.pendingMessages);
+    //console.log(this.pendingMessages);
 
     if (hasApiCall && !hasHttpWait) {
       var serializer = new TLSerialization({ mtproto: true });
@@ -617,7 +618,7 @@ export function MtpNetworkerFactory() {
       return;
     }
 
-    console.log(messages);
+    //console.log(messages);
 
     var noResponseMsgs = [];
 
@@ -659,7 +660,7 @@ export function MtpNetworkerFactory() {
       this.sentMessages[message.msg_id] = message;
     }
 
-    console.log(this.sentMessages);
+    //console.log(this.sentMessages);
 
     this.pendingAcks = [];
 
@@ -731,7 +732,7 @@ export function MtpNetworkerFactory() {
   };
 
   MtpNetworker.prototype.getEncryptedMessage = function (dataWithPadding) {
-    console.log('getEncryptedMessage', dataWithPadding);
+    //console.log('getEncryptedMessage', dataWithPadding);
 
     var self = this;
     return self.getMsgKey(dataWithPadding, true).then(function (msgKey) {
@@ -749,7 +750,7 @@ export function MtpNetworkerFactory() {
   };
 
   MtpNetworker.prototype.getDecryptedMessage = function (msgKey, encryptedData) {
-    console.log('getDecryptedMessage');
+    //console.log('getDecryptedMessage');
 
     // console.log(dT(), 'get decrypted start')
     return this.getAesKeyIv(msgKey, false).then(function (keyIv) {
@@ -759,7 +760,7 @@ export function MtpNetworkerFactory() {
   };
 
   MtpNetworker.prototype.sendEncryptedRequest = function (message, options) {
-    console.log('sendEncryptedRequest', message);
+    //console.log('sendEncryptedRequest', message);
 
     var self = this;
     options = options || {};
@@ -787,7 +788,7 @@ export function MtpNetworkerFactory() {
     // console.log(dT(), 'auth_key_id', bytesToHex(self.authKeyID))
 
     return this.getEncryptedMessage(dataWithPadding).then(function (encryptedResult) {
-      console.log('getEncryptedMessageResult', encryptedResult);
+      //console.log('getEncryptedMessageResult', encryptedResult);
       // console.log(dT(), 'Got encrypted out message'/*, encryptedResult*/)
       var request = new TLSerialization({ startMaxLength: encryptedResult.bytes.byteLength + 256 });
       request.storeIntBytes(self.authKeyID, 64, 'auth_key_id');
@@ -811,9 +812,9 @@ export function MtpNetworkerFactory() {
             transformRequest: null
         });
         
-        console.log("url", url);
-        console.log("requestData", requestData);
-        console.log("options", options);              
+        //console.log("url", url);
+        //console.log("requestData", requestData);
+        //console.log("options", options);              
 
         requestPromise = httpClient2.post(url, requestData, options);        
 
@@ -844,7 +845,7 @@ export function MtpNetworkerFactory() {
   };
 
   MtpNetworker.prototype.parseResponse = function (responseBuffer) {
-    console.log('parseResponse');
+    //console.log('parseResponse');
 
     // console.log(dT(), 'Start parsing response')
     var self = this;
@@ -953,7 +954,7 @@ export function MtpNetworkerFactory() {
 
   MtpNetworker.prototype.applyServerSalt = function (newServerSalt) {
 
-    console.log('applyServerSalt');
+    //console.log('applyServerSalt');
 
     var serverSalt = longToBytes(newServerSalt);
 
@@ -967,7 +968,7 @@ export function MtpNetworkerFactory() {
   };
 
   MtpNetworker.prototype.sheduleRequest = function (delay) {
-    console.log('sheduleRequest');
+    //console.log('sheduleRequest');
 
     if (this.offline) {
       this.checkConnection('forced shedule');
@@ -998,22 +999,20 @@ export function MtpNetworkerFactory() {
   };
 
   MtpNetworker.prototype.ackMessage = function (msgID) {
-    console.log('ackMessage');
-
+    //console.log('ackMessage');
     // console.log('ack message', msgID)
     this.pendingAcks.push(msgID);
     this.sheduleRequest(30000);
   };
 
-  MtpNetworker.prototype.reqResendMessage = function (msgID) {
-    
-    console.log('reqResendMessage', msgID);
+  MtpNetworker.prototype.reqResendMessage = function (msgID) {    
+    //console.log('reqResendMessage', msgID);
     this.pendingResends.push(msgID);
     this.sheduleRequest(100);
   };
 
   MtpNetworker.prototype.cleanupSent = function () {
-    console.log('cleanupSent');
+    //console.log('cleanupSent');
 
     var self = this;
     var notEmpty = false;
@@ -1051,7 +1050,7 @@ export function MtpNetworkerFactory() {
   };
 
   MtpNetworker.prototype.processMessageAck = function (messageID) {
-    console.log('processMessageAck');
+    //console.log('processMessageAck');
 
     var sentMessage = this.sentMessages[messageID];
 
@@ -1066,7 +1065,7 @@ export function MtpNetworkerFactory() {
   };
 
   MtpNetworker.prototype.processError = function (rawError) {
-    console.log('processError');
+    //console.log('processError');
 
     var matches = (rawError.error_message || '').match(/^([A-Z_0-9]+\b)(: (.+))?/) || [];
     rawError.error_code = uintToInt(rawError.error_code);
@@ -1080,7 +1079,7 @@ export function MtpNetworkerFactory() {
   };
 
   MtpNetworker.prototype.processMessage = function (message, messageID, sessionID) {
-    console.log('processMessage');
+    console.log('processMessage', message);
 
     var msgidInt = parseInt(messageID.toString(10).substr(0, -10), 10);
 
@@ -1158,7 +1157,7 @@ export function MtpNetworkerFactory() {
 
         // Storage.get('dc').then(function (baseDcID) {
         //   if (baseDcID == self.dcID && !self.upload && updatesProcessor) {
-            updatesProcessor(message, true);
+            ////!!!!updatesProcessor(message, true);
         //   }
         // });
 
@@ -1209,7 +1208,7 @@ export function MtpNetworkerFactory() {
           var deferred = sentMessage.deferred;
           if (message.result._ == 'rpc_error') {
             var error = this.processError(message.result);
-            console.log('Rpc error', error);
+            //console.log('Rpc error', error);
             if (deferred) {
               deferred.reject(error);
             }
@@ -1228,7 +1227,7 @@ export function MtpNetworkerFactory() {
                   }
                 }
 
-                console.log('Rpc response', dRes);
+                //console.log('Rpc response', dRes);
               //}
 
               sentMessage.deferred.resolve(message.result);
@@ -1255,7 +1254,7 @@ export function MtpNetworkerFactory() {
   };
 
   function startAll() {
-    console.log('startAll');
+    //console.log('startAll');
 
     if (akStopped) {
       akStopped = false;
@@ -1264,19 +1263,19 @@ export function MtpNetworkerFactory() {
   }
 
   function stopAll() {
-    console.log('stopAll');
+    //console.log('stopAll');
 
     akStopped = true;
   }
 
   return {
     getNetworker: function (dcID, authKey, serverSalt, options) {
-      console.log('getNetworker');
+      //console.log('getNetworker');
 
       return new MtpNetworker(dcID, authKey, serverSalt, options);
     },
     setUpdatesProcessor: function (callback) {
-      console.log('setUpdatesProcessor');
+      ///console.log('setUpdatesProcessor');
 
       updatesProcessor = callback;
     },

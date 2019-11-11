@@ -1,5 +1,6 @@
 import Config from '../lib/config';
 import MtpApiManager from '../lib/mtproto/mtproto_wrapper';
+import $q from 'q';
 
 var mtpApiManager = new MtpApiManager();
 
@@ -13,10 +14,17 @@ const AuthService = {
         surname: null,
         isAuthorized: false        
     },
-    initPhoneCountry: async () => {        
+    initPhoneCountry: async () => {    
+        var deferred = $q.defer();
+        
         mtpApiManager.invokeApi('help.getNearestDc', {}, {dcID: 2, createNetworker: true}).then((nearestDcResult) => {
-            console.log('nearestDcResult', nearestDcResult);            
+            
+            deferred.resolve(nearestDcResult);
+
+            console.log('!!!!!!!!!!!!!!!!NEAREST DV RESULT !!!!!!!!!!!', nearestDcResult);
         });
+
+        return deferred.promise;
     },
     sendCode: async (country, phone) => {        
         

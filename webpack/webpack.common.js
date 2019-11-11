@@ -6,7 +6,8 @@ const HtmlWebpackPlugin = require('html-webpack-plugin');
 
 module.exports = {
   entry: {    
-    app: Path.resolve(__dirname, '../src/scripts/index.js')
+    app: Path.resolve(__dirname, '../src/scripts/index.js'),
+    // another: Path.resolve(__dirname, '../src/components/countries/combobox.js')
   },
   output: {
     path: Path.join(__dirname, '../build'),
@@ -20,7 +21,8 @@ module.exports = {
   },
   plugins: [    
     // new webpack.ProvidePlugin({
-    //   CryptoJS: Path.resolve(__dirname, '../src/lib/mtproto/vendor/crypto.js')
+    //   combo: Path.resolve(__dirname, '../src/components/countries/combobox.js')
+    //   // CryptoJS: Path.resolve(__dirname, '../src/lib/mtproto/vendor/crypto.js')
     // }),
     new CleanWebpackPlugin(),
     new CopyWebpackPlugin([
