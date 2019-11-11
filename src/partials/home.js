@@ -9,7 +9,7 @@ let HomeComponent = {
             var redirectUrl= '/#/signin';
             location = redirectUrl;
             return redirectUrl;
-        }        
+        }
 
         return null;       
     },

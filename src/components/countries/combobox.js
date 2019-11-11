@@ -177,7 +177,7 @@ export default class Autocomplete {
                 const resultListItemDiv = document.createElement('div');
                 resultListItemDiv.innerHTML = `<div id="${result.id}">
                         <div style="float: left; width: 40px; margin-top: 5px; ">
-                            <img width="20" height="15" src="src/images/${result.value.toLowerCase()}.png">
+                            <img width="20" height="15" src="src/images/countries/${result.value.toLowerCase()}.png">
                         </div>
                         <div style="float: left; color: gray; font-size: 13px; margin-top: 5px; overflow: hidden">${result.label}</div>
                         <div style="float: right; width: 70px; color: gray; text-align: right; font-size: 13px; margin-top: 5px; overflow: hidden">${resultListItem.dataset.prefix}</div>
@@ -220,6 +220,7 @@ export default class Autocomplete {
     outputInput(resultsId) {
         this.input = document.createElement('input');
         this.input.type = 'text';
+        this.input.setAttribute('id', `${this.select.id}-input`);
         this.input.setAttribute('role', 'combobox');
         this.input.setAttribute('autocomplete', 'none');        
         this.input.setAttribute('placeholder', 'Country');

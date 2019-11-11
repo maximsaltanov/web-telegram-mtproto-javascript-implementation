@@ -30,7 +30,8 @@ p {
 #root_container .form_container {    
     width: 300px;
     margin-top: 140px;  
-    display: inline-block;    
+    display: inline-block;        
+    // display: none;
 }
 
 #root_container .form_container .logo {    
@@ -39,7 +40,7 @@ p {
     margin-bottom: 40px;
 }
 
-#root_container p.signin_descr {
+#root_container p.form_descr {
     width: 220px;    
     display: inline-block;  
 }
@@ -85,6 +86,10 @@ p {
 // checkbox
 #root_container .keep_me_in input[type="checkbox"] {
     visibility: hidden;        
+}
+
+#root_container .width-160{
+    width: 160px !important;
 }
 
 #root_container .keep_me_in label {
@@ -191,7 +196,7 @@ p {
 }
 
 .chbContainer .autocomplete__results--is-visible {
-    max-height: 250px;
+    max-height: 330px;
     opacity: 1
 }
 

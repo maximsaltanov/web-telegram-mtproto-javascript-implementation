@@ -6,6 +6,7 @@ var mtpApiManager = new MtpApiManager();
 
 const AuthService = { 
     credentials: {
+        country: null,
         phone_full: null,
         phone_code_hash: null
     },
@@ -14,25 +15,34 @@ const AuthService = {
         surname: null,
         isAuthorized: false        
     },
-    initPhoneCountry: async () => {    
-        var deferred = $q.defer();
+    initPhoneCountry: () => {    
+        var deferred = $q.defer();        
         
-        mtpApiManager.invokeApi('help.getNearestDc', {}, {dcID: 2, createNetworker: true}).then((nearestDcResult) => {
-            
-            deferred.resolve(nearestDcResult);
-
-            console.log('!!!!!!!!!!!!!!!!NEAREST DV RESULT !!!!!!!!!!!', nearestDcResult);
+        mtpApiManager.invokeApi('help.getNearestDc', {}, {dcID: 2, createNetworker: true}).then((nearestDcResult) => {            
+            console.log('NEAREST DC: ', nearestDcResult);    
+            AuthService.credentials.country = nearestDcResult.country;
+            deferred.resolve(nearestDcResult.country);
         });
 
         return deferred.promise;
     },
-    sendCode: async (country, phone) => {        
+    cancelCode: () => {        
+        var deferred = $q.defer();        
+                
+        mtpApiManager.invokeApi('auth.cancelCode', {
+            phone_number: AuthService.credentials.phone_full,
+            phone_code_hash: AuthService.credentials.phone_code_hash
+        }).then(() => deferred.resolve);
+
+        return deferred.promise;
+    },
+    sendCode: (countryCode, phone) => {        
+
+        var deferred = $q.defer();        
         
-        ////AuthService.credentials.phone_full = (country || '') + (phone || '');
+        AuthService.credentials.country = countryCode;
         AuthService.credentials.phone_full = phone;
-        
-        ////var authKeyStarted = tsNow();
-        
+                        
         mtpApiManager.invokeApi('auth.sendCode', {
             flags: 0,
             phone_number: AuthService.credentials.phone_full,
@@ -40,31 +50,48 @@ const AuthService = {
             api_hash: Config.App.hash,
             lang_code: navigator.language || 'en'
         }).then(function (sentCode) {                            
-            AuthService.credentials.phone_code_hash = sentCode.phone_code_hash;
-            
-            ////applySentCode(sentCode);
+            AuthService.credentials.phone_code_hash = sentCode.phone_code_hash;   
+            console.log('sendCode success. hash=', AuthService.credentials.phone_code_hash);
+            deferred.resolve(AuthService.credentials.phone_code_hash);                        
 
         }, function (error) {                
             console.log('sendCode error', error);
-
+            
             // switch (error.type) {
             //     case 'PHONE_NUMBER_INVALID':
-            //     $scope.error = {field: 'phone'};
-            //     error.handled = true;
+            //         /////
+            //     break;  
+            //     case 'PHONE_NUMBER_APP_SIGNUP_FORBIDDEN':                    
+            //     /////
             //     break;
+            // }
 
-            //     case 'PHONE_NUMBER_APP_SIGNUP_FORBIDDEN':
-            //         $scope.error = {field: 'phone'};
-            //         break;
-            //     }
+            deferred.reject(error);
+        });
 
-            });
+        return deferred.promise;
     },
-    authorize: async () => {
-        AuthService.user.name = 'Max';
-        AuthService.user.surname = 'S';
-        AuthService.user.isAuthorized = true;
-        return AuthService.user;
+    authorize: (phoneCode) => {
+
+        var deferred = $q.defer();       
+
+        var params = {
+            phone_number: AuthService.credentials.phone_full,
+            phone_code_hash: AuthService.credentials.phone_code_hash,
+            phone_code: phoneCode
+        };
+
+        mtpApiManager.invokeApi('auth.signIn', params).then((data) => {
+            console.log("auth success", data);        
+            AuthService.user.isAuthorized = true;    
+            deferred.resolve(data);                        
+
+        }, (error) => {
+            console.log(error);
+            deferred.reject(error);
+        });
+
+        return deferred.promise;        
     }
 };
 
