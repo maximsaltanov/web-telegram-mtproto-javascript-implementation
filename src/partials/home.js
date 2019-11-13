@@ -1,27 +1,47 @@
-import AuthService from '../auth/authService';
+import AuthServiceSingleton from '../auth/authService';
+import DialogsService from '../dialogs/dialogsService';
+
+const AuthService = new AuthServiceSingleton().getInstance();
+const dialogsService = new DialogsService();
+
+var user = null;
 
 let HomeComponent = {
-
+    
     preRender: async () => {
         console.log('home pre render');
+    
+        ///var userId = AuthService.mtpApiManager.getUserID();        
 
-        if (!AuthService.user.isAuthorized) {            
+        user = AuthService.getUser();
+        console.log(user);
+
+        if (user == null)
+        {
             var redirectUrl= '/#/signin';
             location = redirectUrl;
             return redirectUrl;
-        }
+        }        
+        
+        user = JSON.parse(user);                
 
         return null;       
     },
     render: async () => {
 
-        console.log('home render');
-
+        console.log('home render');     
+        
+        dialogsService.getDialogs().then((data) => {                    
+            console.log('success !!!');
+        }, (error) => {
+            console.log(error);
+        });
+        
         return `        
         <div id="root_container">
             <form class="form_container">
                 <h1>Welcome to Telegram</h1>        
-                ${AuthService.user.name} ${AuthService.user.surname}
+                ${user["first_name"]} ${user.last_name}
             </form>
         </div>  
         `;

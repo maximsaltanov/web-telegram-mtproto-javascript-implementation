@@ -1,13 +1,13 @@
 const Config = {
     App: {
-        id: 2496,
-        hash: '8da85b0d5bfe62527e5b244c209159c3',
-        version: '0.7.0',
-        domains: ['web.telegram.org', 'zhukov.github.io'],
-        // id: 964141,
-        // hash: 'd9bf86a6fee15219b0a92c31b9e71060',
+        // id: 2496,
+        // hash: '8da85b0d5bfe62527e5b244c209159c3',
         // version: '0.7.0',
-        // domains: ['mapul.com'],
+        // domains: ['web.telegram.org', 'zhukov.github.io'],
+        id: 964141,
+        hash: 'd9bf86a6fee15219b0a92c31b9e71060',
+        version: '0.7.0',
+        domains: ['mapul.com']
         // ipAddr: 'https://aurora.web.telegram.org/apiw1'
         ////ipAddr: 'https://pluto.web.telegram.org/apiw1'
         // ipAddr: 'https://venus.web.telegram.org/apiw1'

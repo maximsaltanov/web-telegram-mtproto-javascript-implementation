@@ -1,4 +1,6 @@
 import Rusha from 'rusha';
+import { Zlib } from 'zlibt';
+
 import { bpe, str2bigInt, copyInt_, copy_, isZero, add_, rightShift_, greater, 
   sub_, eGCD_, equalsInt, one, divide_, bigInt2str, powMod } from './vendor/bigint';
 import LongGoog from './vendor/long';
@@ -442,9 +444,13 @@ var aes = CryptoJS.AES;
 }
 
 export function gzipUncompress(bytes) {
-  ////console.log('Gzip uncompress start');
-  var result = (new Zlib.Gunzip(bytes)).decompress();
-  ////console.log('Gzip uncompress finish');
+  console.log('Gzip uncompress start', bytes);
+  ////var gunzip = new Zlib.Gunzip(bytes);  
+  var gunzip = new Zlib.Gunzip(bytes);  
+  console.log(gunzip);
+  var result = gunzip.decompress();
+  ////var result = (new Zlib.Gunzip(bytes)).decompress();
+  console.log('Gzip uncompress finish');
   return result;
 }
 

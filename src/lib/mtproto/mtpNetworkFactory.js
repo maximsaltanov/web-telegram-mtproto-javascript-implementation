@@ -19,7 +19,9 @@ import {
 import $q from 'q';
 import { generateSecureRandomBytes } from './vendor/jsbn_combined';
 import Utils from '../utils';
+import Storage from '../storageService';
 
+const storage = new Storage();
 const mtpDcConfigurator = new MtpDcConfigurator();
 const mtpTimeManager = new MtpTimeManager();
 const cryptoWorker = new CryptoWorker();
@@ -37,7 +39,7 @@ export function MtpNetworkerFactory() {
 
     options = options || {};
 
-    this.dcID = dcID;
+    this.dcID = dcID || 2;
 
     this.authKey = authKey;   
     this.authKeyUint8 = convertToUint8Array(authKey);
@@ -214,47 +216,58 @@ export function MtpNetworkerFactory() {
   MtpNetworker.prototype.wrapApiCall = function (method, params, options) {
     //console.log('wrapApiCall');
 
-    var serializer = new TLSerialization(options);
+      try{
+      var serializer = new TLSerialization(options);
 
-    if (!this.connectionInited) {
-      serializer.storeInt(0xda9b0d0d, 'invokeWithLayer');
-      ////serializer.storeInt(Config.Schema.API.layer, 'layer');
-      serializer.storeInt(74, 'layer');
-      serializer.storeInt(0xc7481da6, 'initConnection');
-      ////serializer.storeInt(Config.App.id, 'api_id');
-      serializer.storeInt(2496, 'api_id');
-      serializer.storeString(navigator.userAgent || 'Unknown UserAgent', 'device_model');
-      serializer.storeString(navigator.platform || 'Unknown Platform', 'system_version');
-      ////serializer.storeString(Config.App.version, 'app_version');
-      serializer.storeString("0.7.0", 'app_version');
-      serializer.storeString(navigator.language || 'en', 'system_lang_code');
-      serializer.storeString('', 'lang_pack');
-      serializer.storeString(navigator.language || 'en', 'lang_code');
+      // var appId = 2496;
+      var appId = 964141;    
+      var appVersion = "0.7.0";
+
+      if (!this.connectionInited) {
+        serializer.storeInt(0xda9b0d0d, 'invokeWithLayer');
+        ////serializer.storeInt(Config.Schema.API.layer, 'layer');
+        serializer.storeInt(74, 'layer');
+        serializer.storeInt(0xc7481da6, 'initConnection');
+        ////serializer.storeInt(Config.App.id, 'api_id');
+        serializer.storeInt(appId, 'api_id');
+        serializer.storeString(navigator.userAgent || 'Unknown UserAgent', 'device_model');
+        serializer.storeString(navigator.platform || 'Unknown Platform', 'system_version');
+        ////serializer.storeString(Config.App.version, 'app_version');
+        serializer.storeString(appVersion, 'app_version');
+        serializer.storeString(navigator.language || 'en', 'system_lang_code');
+        serializer.storeString('', 'lang_pack');
+        serializer.storeString(navigator.language || 'en', 'lang_code');
+      }
+
+      if (options.afterMessageID) {
+        serializer.storeInt(0xcb9f372d, 'invokeAfterMsg');
+        serializer.storeLong(options.afterMessageID, 'msg_id');
+      }
+
+      options.resultType = serializer.storeMethod(method, params);
+
+      var messageID = mtpTimeManager.generateID();
+      var seqNo = this.generateSeqNo();
+      var message = {
+        msg_id: messageID,
+        seq_no: seqNo,
+        body: serializer.getBytes(true),
+        isAPI: true
+      };
+
+      ////if (Config.Modes.debug) {
+      //  console.log('Api call', method, params, messageID, seqNo, options);
+      // } else {
+        //console.log('Api call', method);
+      // }
+
+      return this.pushMessage(message, options);
     }
-
-    if (options.afterMessageID) {
-      serializer.storeInt(0xcb9f372d, 'invokeAfterMsg');
-      serializer.storeLong(options.afterMessageID, 'msg_id');
+    catch(error)
+    {
+      console.log("wrapApiCall error", error);
+      return null;      
     }
-
-    options.resultType = serializer.storeMethod(method, params);
-
-    var messageID = mtpTimeManager.generateID();
-    var seqNo = this.generateSeqNo();
-    var message = {
-      msg_id: messageID,
-      seq_no: seqNo,
-      body: serializer.getBytes(true),
-      isAPI: true
-    };
-
-    ////if (Config.Modes.debug) {
-    //  console.log('Api call', method, params, messageID, seqNo, options);
-    // } else {
-      //console.log('Api call', method);
-    // }
-
-    return this.pushMessage(message, options);
   };
 
   MtpNetworker.prototype.checkLongPoll = function (force) {
@@ -427,6 +440,7 @@ export function MtpNetworkerFactory() {
   };
 
   MtpNetworker.prototype.checkConnection = function (event) {
+    return;
 
     //$rootScope.offlineConnecting = true;
 
@@ -482,7 +496,7 @@ export function MtpNetworkerFactory() {
       ////$timeout.cancel(this.nextReqPromise);
       clearTimeout(this.nextReqPromise);
 
-      delete this.nextReq;
+      delete this.nextReq;      
 
       if (this.checkConnectionPeriod < 1.5) {
         this.checkConnectionPeriod = 0;
@@ -554,6 +568,8 @@ export function MtpNetworkerFactory() {
       
       for(var item in this.pendingMessages) {
         var value = this.sentMessages[item];
+
+        if (!value) return;
         var messageID = value.msg_id;
 
       ////(this.pendingMessages).forEach(function (value, messageID) {
@@ -689,7 +705,7 @@ export function MtpNetworkerFactory() {
 
         self.checkLongPoll();
 
-        this.checkConnectionPeriod = Math.max(1.1, Math.sqrt(this.checkConnectionPeriod));
+        ////!!!!this.checkConnectionPeriod = Math.max(1.1, Math.sqrt(this.checkConnectionPeriod));
       });
     }, function (error) {
       console.error('Encrypted request failed', error);
@@ -952,17 +968,10 @@ export function MtpNetworkerFactory() {
     });
   };
 
-  MtpNetworker.prototype.applyServerSalt = function (newServerSalt) {
-
-    //console.log('applyServerSalt');
-
-    var serverSalt = longToBytes(newServerSalt);
-
-    var storeObj = {};
-    storeObj['dc' + this.dcID + '_server_salt'] = bytesToHex(serverSalt);
-
-    ////Storage.set(storeObj);
-
+  MtpNetworker.prototype.applyServerSalt = function (newServerSalt) {    
+    var serverSalt = longToBytes(newServerSalt);    
+    var ssk = `dc_2_server_salt`;
+    storage.set(ssk, bytesToHex(serverSalt));
     this.serverSalt = serverSalt;
     return true;
   };
@@ -1196,7 +1205,7 @@ export function MtpNetworkerFactory() {
         }
         break;
 
-      case 'rpc_result':
+      case 'rpc_result':          
         this.ackMessage(messageID);
 
         var sentMessageID = message.req_msg_id;
@@ -1207,10 +1216,10 @@ export function MtpNetworkerFactory() {
         if (sentMessage) {
           var deferred = sentMessage.deferred;
           if (message.result._ == 'rpc_error') {
-            var error = this.processError(message.result);
-            //console.log('Rpc error', error);
+            ////var error = this.processError(message.result);            
             if (deferred) {
-              deferred.reject(error);
+              console.log('Rpc error !!!!!!!!', message.result);
+              deferred.reject(message.result);
             }
           } else {
             if (deferred) {

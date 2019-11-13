@@ -27,6 +27,7 @@ export default function MtpDcConfigurator() {
 
     function chooseServer(dcID, upload) {
         var chosenServer = 'https://venus.web.telegram.org/apiw1';
+        // var chosenServer = 'https://149.154.167.50:443';
         return chosenServer;
 
         // // if (chosenServers[dcID] === undefined) {
