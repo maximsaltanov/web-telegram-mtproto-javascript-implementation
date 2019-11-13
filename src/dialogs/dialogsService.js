@@ -6,36 +6,11 @@ export default class DialogsService {
 
     constructor() {
         console.log('Dialogs Service Created');
+        ////this.messages = null;        
     }
 
-    // _getInputPeerByID(peerID) {
-    //     if (!peerID) {
-    //         return { _: 'inputPeerEmpty' }
-    //     }
-    //     if (peerID < 0) {
-    //         var chatID = -peerID
-    //         if (!AppChatsManager.isChannel(chatID)) {
-    //             return {
-    //                 _: 'inputPeerChat',
-    //                 chat_id: chatID
-    //             }
-    //         } else {
-    //             return {
-    //                 _: 'inputPeerChannel',
-    //                 channel_id: chatID,
-    //                 access_hash: AppChatsManager.getChat(chatID).access_hash || 0
-    //             }
-    //         }
-    //     }
-    //     return {
-    //         _: 'inputPeerUser',
-    //         user_id: peerID,
-    //         access_hash: AppUsersManager.getUser(peerID).access_hash || 0
-    //     }
-    // }
-
     getDialogs() {
-
+        
         var deferred = $q.defer();
 
         AuthService.mtpApiManager.invokeApi('messages.getDialogs', {
@@ -45,12 +20,72 @@ export default class DialogsService {
             offset_peer: { _: 'inputPeerEmpty' },
             limit: 0
         }, {
-            timeout: 300
-        }).then(function (result) {
+            timeout: 4000
+        }).then(function (result) {            
             console.log('get DIALOGS: ', result);
             deferred.resolve(result);
         }, (error) => {
             console.log('get DIALOGS error: ', error);
+            deferred.reject(error);
+        });
+
+        return deferred.promise;
+    }
+
+    _getInputPeerByID(peerId, hashId, isChannel) {
+        if (!peerId) {
+            return { _: 'inputPeerEmpty' };
+        }
+        if (peerId < 0) {
+            var chatId = -peerId;
+            if (!isChannel) {
+                return {
+                    _: 'inputPeerChat',
+                    chat_id: chatId
+                };
+            } else {
+                return {
+                    _: 'inputPeerChannel',
+                    channel_id: chatId,
+                    access_hash: hashId || 0
+                };
+            }
+        }
+        return {
+            _: 'inputPeerUser',
+            user_id: peerId,
+            access_hash: hashId || 0
+        };
+    }
+
+    getMessages(peerId, hashId, isChannel) {
+
+        var self = this;
+
+        var deferred = $q.defer();
+
+        var request = {
+            peer: this._getInputPeerByID(peerId, hashId, isChannel),
+            offset_id: 0,
+            add_offset: 0,
+            limit: 0
+        };        
+
+        // if (this.messages != null) {
+        //     var item = this.messages.find((item) => item.id == peerId);
+        //     if (item != null) {
+        //         deferred.resolve(item);
+        //     }
+        // }        
+
+        AuthService.mtpApiManager.invokeApi('messages.getHistory', request, {
+            timeout: 4000
+        }).then(function (result) {
+            ////self.messages.push(result);
+            console.log('get MESSAGES: ', result);
+            deferred.resolve(result);
+        }, (error) => {
+            console.log('get MESSAGES error: ', error);
             deferred.reject(error);
         });
 

@@ -482,6 +482,7 @@ export function MtpNetworkerFactory() {
   MtpNetworker.prototype.toggleOffline = function (enabled) {        
 
     //console.log('toggleOffline');    
+    return false;
 
     // console.log('toggle ', enabled, this.dcID, this.iii)
     if (this.offline !== undefined && this.offline == enabled) {

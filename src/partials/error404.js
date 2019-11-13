@@ -1,9 +1,9 @@
 let HomeComponent = {
 
-    preRender: async () => {
+    preRender: () => {
         
     },
-    render: async () => {
+    render: () => {
                 
         return `        
         <div id="root_container">

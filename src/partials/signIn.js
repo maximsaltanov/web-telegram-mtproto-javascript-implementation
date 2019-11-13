@@ -6,7 +6,7 @@ const AuthService = new AuthServiceSingleton().getInstance();
 
 let SigninComponent = {
     currentFormId: 1,
-    preRender: async () => {
+    preRender: () => {
         console.log('signin pre render');
 
         // var userId = AuthService.mtpApiManager.getUserID();
@@ -25,7 +25,7 @@ let SigninComponent = {
 
         return null;
     },
-    render: async () => {
+    render: () => {
 
         // console.log('signin render');                
 
@@ -41,7 +41,7 @@ let SigninComponent = {
                 </div>
             </div>  
             <div class="form_input">
-                <input id="tboxPhoneNumber" name="tboxPhoneNumber" type="text" placeholder="Phone Number" required>
+                <input id="tboxPhoneNumber" maxlength="12" name="tboxPhoneNumber" type="text" placeholder="Phone Number" required>
             </div>
             <div class="keep_me_in">                
                 <p>
@@ -49,12 +49,9 @@ let SigninComponent = {
                     <label for="keepMyIn">Keep me signed in</label>
                 </p>
             </div>
-            <div class="form_submit">
+            <div id="form_submit" class="form_submit">
                 <input id="btnSubmitSigninForm" type="button" value="NEXT">
-            </div>            
-            <div class="form_submit">
-                <input id="btnCancelCode1" type="button" value="CANCEL CODE">
-            </div>
+            </div>                        
         </form>
         <form id="form_2" novalidate class="form_container" autocomplete="off">        
             <img class="code" src="src/images/t_monkey1.png" alt="enter code">                
@@ -65,10 +62,7 @@ let SigninComponent = {
             </div>          
             <div class="form_submit">
                 <input id="btnSubmitCodeForm" type="button" value="NEXT">
-            </div>
-            <div class="form_submit">
-                <input id="btnCancelCode2" type="button" value="CANCEL CODE">
-            </div>
+            </div>            
         </form>
         <form id="form_3" novalidate class="form_container" autocomplete="off">        
             <img class="profile" src="src/images/t_choose_ava.png" alt="choose profile picture">                
@@ -82,10 +76,7 @@ let SigninComponent = {
             </div>          
             <div class="form_submit">
                 <input id="btnSubmitName" type="button" value="START MESSAGING">
-            </div>
-            <div class="form_submit">
-                <input id="btnCancelCode4" type="button" value="CANCEL CODE">
-            </div>
+            </div>            
         </form>
         <form id="form_4" novalidate class="form_container" autocomplete="off">        
             <img class="password" src="src/images/t_monkey3.png" alt="enter password">                
@@ -96,10 +87,7 @@ let SigninComponent = {
             </div>          
             <div class="form_submit">
                 <input id="btnSubmitPassword" type="button" value="NEXT">
-            </div>
-            <div class="form_submit">
-                <input id="btnCancelCode3" type="button" value="CANCEL CODE">
-            </div>
+            </div>            
         </form>        
     </div>
         `;
@@ -132,26 +120,29 @@ let SigninComponent = {
             });
 
             //// get default country
-            SigninComponent.initPhoneCountry();
+            SigninComponent.initPhoneCountry();            
 
-            //// next 
-            document.getElementById("btnSubmitSigninForm").addEventListener("click", () => {
+            var btnSubmitSigninForm = document.getElementById("btnSubmitSigninForm");
+            var tboxPhoneNumber = document.getElementById("tboxPhoneNumber");
+
+            // function onForm1KeyUp() {                
+            //     switch (this.getAttribute('id')){
+            //         case 'tboxPhoneNumber':
+            //             if (this.value.trim() != '' && this.value.length == 12){
+            //                 btnSubmitSigninForm.style.display = 'inline';
+            //             } else btnSubmitSigninForm.style.display = 'none';
+            //     }
+            // }
+
+            // tboxPhoneNumber.addEventListener("onKeyUp", onForm1KeyUp);                        
+
+            //// FORM 1 
+            btnSubmitSigninForm.addEventListener("click", () => {
 
                 let countryName = document.getElementById('cbxCountries-input').value;
                 let country = Countries.find((item) => item.name == countryName);
-                let phone = document.getElementById("tboxPhoneNumber").value;
-
-                // AuthService.setUser({
-                //     id:603177,
-                //     first_name:"John",
-                //     last_name:"Doe",
-                //     phone:"79991234567"
-                // });
-
-                // location = '/#/';
-
-                // return false;
-                
+                let phone = tboxPhoneNumber.value;
+            
                 AuthService.sendCode(country.code, phone).then((data) => {                    
                     SigninComponent.showForm(2);
                 }, (error) => {
@@ -179,6 +170,7 @@ let SigninComponent = {
                 return false;
             });
 
+            //// FORM 2
             document.getElementById("btnSubmitCodeForm").addEventListener("click", () => {
                 let code = document.getElementById("tboxCode").value;
 
@@ -256,44 +248,7 @@ let SigninComponent = {
             document.getElementById("btnSubmitPassword").addEventListener("click", () => {
                 ////SigninComponent.showForm(4);
                 return false;
-            });
-
-            ///////////////////// test cancel
-            document.getElementById("btnCancelCode1").addEventListener("click", () => {
-
-                AuthService.cancelCode().then(() => {
-                    SigninComponent.showForm(1);
-                });
-
-                return false;
-            });
-
-            document.getElementById("btnCancelCode2").addEventListener("click", () => {
-
-                AuthService.cancelCode().then(() => {
-                    SigninComponent.showForm(1);
-                });
-
-                return false;
-            });
-
-            document.getElementById("btnCancelCode3").addEventListener("click", () => {
-
-                AuthService.cancelCode().then(() => {
-                    SigninComponent.showForm(1);
-                });
-
-                return false;
-            });
-
-            document.getElementById("btnCancelCode4").addEventListener("click", () => {
-
-                AuthService.cancelCode().then(() => {
-                    SigninComponent.showForm(1);
-                });
-
-                return false;
-            });
+            });           
         }
     },
     showForm: (id) => {
