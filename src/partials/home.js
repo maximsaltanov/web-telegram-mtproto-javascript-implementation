@@ -48,26 +48,28 @@ let HomeComponent = {
                 <div id="footerColumn2" class="column-2-footer" style="display: none">                
                 </div>
             </div>
+            <div id="preloader" class="preloader"><img src="src/images/preloader.gif"></div>
         </div>
         `;      
     }
     , after_render: async () => {
         console.log('home after render');        
 
-        //// show progress
-        HomeComponent.showPreloader(document.getElementById('dialogs-container'));                       
-        HomeComponent.getDialogs();
+        //// show progress        
+        HomeComponent.showPreloader();
+        
+        setTimeout(() => {
+            HomeComponent.getDialogs();    
+        }, 3000);
+        
     },
     clearContainer: (container) => {
         while (container.firstChild) {
             container.removeChild(container.firstChild);        
         }      
     },
-    showPreloader: (container) => {
-        HomeComponent.clearContainer(container);
-        var preloader = document.createElement("div");          
-        preloader.innerHTML = `<div class="preloader"><img src="src/images/preloader.gif"></div>`; 
-        container.appendChild(preloader);   
+    showPreloader: (show = true) => {
+        document.getElementById('preloader').style.display = !show ? 'none' : 'inline';        
     },    
     getMessages: (peerId, hashId, isChannel) => {                
 
@@ -95,7 +97,7 @@ let HomeComponent = {
         }, (error) => {
             alert(error);            
             HomeComponent.clearContainer(messagesContainer);
-        });
+        }).finally(() => HomeComponent.showPreloader(false));
     },
     getDialogs: () => {
 
@@ -110,6 +112,12 @@ let HomeComponent = {
         
         var dialogsContainer = document.getElementById('dialogs-container');        
         HomeComponent.clearContainer(dialogsContainer);
+
+        function getInitials(item){
+            return item.last_name || item.first_name ? (item.last_name && item.first_name ? item.first_name.charAt(0) + item.last_name.charAt(0) : 
+            item.first_name && item.first_name.length > 2 ? item.first_name.charAt(0) + item.first_name.charAt(1) :
+            item.first_name && item.first_name.length > 2 ? item.first_name.charAt(0)+item.first_name.charAt(0): 'NA') : 'NA';
+        }
 
         dialogsService.getDialogs().then((dialogs) => {            
 
@@ -136,8 +144,7 @@ let HomeComponent = {
                 if (dialogs.users) {
                     //// add users
                     dialogs.users.forEach(item => {           
-                        var initials = item.last_name != null ? item.first_name.charAt(0) + item.last_name.charAt(0) : item.first_name.length > 1 ? item.first_name.charAt(0) + item.first_name.charAt(1) :
-                            item.first_name.charAt(0)+item.first_name.charAt(0);
+                        var initials = getInitials(item);
                         content += `<div class="dialog-item" data-type="user" data-id="${item.id}" 
                             data-title="${item.first_name}${item.last_name ? ' ' + item.last_name : ''}">
                             <div class="dialog-item-ava">            
@@ -158,8 +165,8 @@ let HomeComponent = {
 
                 function selectDialog() {                    
                     
-                    //// show progress
-                    HomeComponent.showPreloader(document.getElementById('messages-container'));        
+                    //// show progress                     
+                    HomeComponent.showPreloader();
 
                     /// get dialog parameters
                     var id = this.getAttribute('data-id');                    
@@ -194,17 +201,13 @@ let HomeComponent = {
             document.getElementById('headerColumn1').style.display = 'block';                        
             document.getElementById('emptyMessageContainer').style.display = 'block';                 
 
+            HomeComponent.showPreloader(false);
+
         }, (error) => {
             console.log(error);
-        });
-        
-        // setTimeout(() => {
-        //     let countryName = 'Russia';
-        //     let phonePrefix = '+79185177860';
 
-        //     document.getElementById('cbxCountries-input').value = countryName;
-        //     document.getElementById('tboxPhoneNumber').value = phonePrefix;
-        // }, 300);
+            HomeComponent.showPreloader(false);
+        });              
     }
 };
 

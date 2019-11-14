@@ -232,10 +232,15 @@ p {
 }
 
 #main_container .preloader {
-    margin-top: 150px;
-    text-align: center;
+    position: absolute;
+    left: 0;
+    top: 0;        
+    background-color: #f2f2f3;
+    opacity: 0.3;
     width: 100%;
-    height: 50px;            
+    height: 100%;            
+    z-index: 999;
+    display: none;
 }
 
 #main_container .column-1-header {

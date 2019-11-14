@@ -25,8 +25,9 @@ export const KEY_CODES = {
 };
 
 export default class Autocomplete {
-    constructor(node) {
+    constructor(node, onSelect) {
         this.select = node;
+        this.onSelect = onSelect;
         this.select.style.display = 'none';
         this.container = this.select.parentElement;
         this.container.classList.add(CLASSES.CONTAINER);
@@ -121,7 +122,7 @@ export default class Autocomplete {
         optionNode.scrollIntoView(false);
         if (callback) {
             callback();
-        }
+        }        
         ////});
     }
 
@@ -129,7 +130,10 @@ export default class Autocomplete {
         const selectedOption = document.getElementById(this.input.dataset.selected);
         this.input.value = selectedOption.dataset.content;
         this.select.value = selectedOption.dataset.value;
-        this.hideResults();
+        if (this.onSelect){
+            this.onSelect(selectedOption.dataset.value);
+        }
+        this.hideResults();        
     }
 
     clearResults() {
@@ -227,6 +231,7 @@ export default class Autocomplete {
         this.input.setAttribute('aria-expanded', 'false');
         this.input.setAttribute('aria-autocomplete', 'list');
         this.input.setAttribute('aria-owns', resultsId);
+        this.input.setAttribute('onClick', 'this.setSelectionRange(0, this.value.length)');
         this.input.classList.add(CLASSES.INPUT);
 
         window.requestAnimationFrame(() => {
@@ -272,27 +277,6 @@ export default class Autocomplete {
         }
     }
 }
-
-// function createAutocomplete(node) {
-//     return new Autocomplete(node);
-// }
-
-// function fillSelectElement(selectElement) {
-//     Countries.forEach((country) => {
-//         let option = document.createElement("option");
-//         option.text = country.name;
-//         option.value = country.code;
-//         selectElement.add(option);
-//     });
-// }
-
-// document.addEventListener('DOMContentLoaded', function () {
-//     const autocompletes = [].slice.call(document.querySelectorAll(`.${CLASSES.BASE}`));
-//     autocompletes.forEach((selectElement) => {
-//         fillSelectElement(selectElement);
-//         createAutocomplete(selectElement);
-//     });
-// });
 
 export const Countries = [
     {
