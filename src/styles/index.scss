@@ -56,6 +56,11 @@ p {
     border-radius: 10px;    
 }
 
+#root_container .form_input input:invalid:not(:placeholder-shown) {    
+    border: 2px solid red;
+    border-radius: 10px;    
+}
+
 #root_container .form_input input:focus {
     border: 2px solid #4ea4f6;
     border-radius: 10px;    
@@ -77,6 +82,47 @@ p {
     padding: 12px;    
     font-size: 12px;
     cursor: pointer;
+}
+
+#root_container .editPhone {
+    position: relative;
+    top: 3px;
+    left: 5px;
+    cursor: pointer;
+}
+
+.floating-label {            
+    display: none;    
+}  
+
+input:not(:placeholder-shown) ~ .floating-label {
+  top: -58px; 
+  background-color: white;
+  left: 15px;
+  font-size: 11px;
+  opacity: 1;
+  color: #333333;
+  display: inline;
+  position: relative;
+  pointer-events: none;
+  z-index: 888;
+}
+
+input:invalid:not(:placeholder-shown) ~ .floating-label::before {
+    content: "Invalid";
+}
+
+input:invalid:not(:placeholder-shown) ~ .floating-label {
+    color: red;
+}
+
+#root_container .autocomplete-chbContainer .floating-label {    
+    top: -70px !important;
+}
+
+#root_container .form_input,
+#root_container .autocomplete-chbContainer {
+    text-align: left;
 }
 
 // checkbox
@@ -175,6 +221,7 @@ p {
 
 .chbContainer .autocomplete__results {        
     background: white;
+    z-index: 8888;
     width: 300px;    
     position: absolute;
     top: 100%;
@@ -312,6 +359,16 @@ p {
     float: left;
 }
 
+#main_container .message-item-left .time,
+#main_container .message-item-right .time,
+#main_container .message-item-center .time{
+    position: relative; 
+    float: right;
+    bottom: -10px;
+    color: gray;
+    font-size: 12px;
+  }
+
 #main_container .message-item-left {
     margin-left: 20%;
 }
@@ -332,7 +389,7 @@ p {
 
 #main_container .dialog-item {
     padding: 10px;
-    margin-left: 10px;
+    margin-left: 10px;    
 }
 
 #main_container .header-item {
@@ -349,6 +406,13 @@ p {
     background-color: #f2f2f3 !important;
     border-radius: 7px;
     cursor: none;
+}
+
+#main_container .dialog-item:hover,
+#main_container .dialog-item-content:hover,
+#main_container .dialog-item-ava:hover {
+    
+    cursor: pointer !important;
 }
 
 #main_container .dialog-item-ava,

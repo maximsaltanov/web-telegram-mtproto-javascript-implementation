@@ -79,23 +79,31 @@ let HomeComponent = {
             if (data && data.messages.length > 0){
                 var content = '';
 
-                data.messages.slice().reverse().forEach(function(item) {                    
+                data.messages.slice().reverse().forEach(function(item) {                
+                    
+                    if (item.message) {
+                        var date = new Date(+item.date);
+                        var hour = date.getHours();
+                        var mins = date.getMinutes();
+                        var time = (hour > 9 ? hour : '0' + hour) + ":" + (mins > 9 ? mins : '0' + mins);
                         
                         var className = isChannel || +peerId < 0 ? 'message-item-center' : 
                             (item.from_id == user.id ? 'message-item-right' : 'message-item-left');
-                        content += `<div class="${className}">${item.message}</div><div style="clear: both;"></div>`;
-                        
+                        content += `<div class="${className}">${item.message}<span class="time">${time}</span></div><div style="clear: both;"></div>`;
+                    }
                 });
                                                 
                 HomeComponent.clearContainer(messagesContainer);
                 var messagesItemsDiv = document.createElement("div");                 
                 messagesItemsDiv.innerHTML = content;
-                messagesContainer.appendChild(messagesItemsDiv);                    
+                messagesContainer.appendChild(messagesItemsDiv);            
+                
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
             }
 
             document.getElementById('footerColumn2').style.display = 'block';
         }, (error) => {
-            alert(error);            
+            alert(error.error_message);            
             HomeComponent.clearContainer(messagesContainer);
         }).finally(() => HomeComponent.showPreloader(false));
     },
@@ -113,10 +121,16 @@ let HomeComponent = {
         var dialogsContainer = document.getElementById('dialogs-container');        
         HomeComponent.clearContainer(dialogsContainer);
 
-        function getInitials(item){
-            return item.last_name || item.first_name ? (item.last_name && item.first_name ? item.first_name.charAt(0) + item.last_name.charAt(0) : 
+        function getDialogsInfo(item){                        
+            var name = `${item.first_name ? item.first_name : ''} ${item.last_name ? ' ' + item.last_name : ''}`;
+            var initials = item.last_name || item.first_name ? (item.last_name && item.first_name ? item.first_name.charAt(0) + item.last_name.charAt(0) : 
             item.first_name && item.first_name.length > 2 ? item.first_name.charAt(0) + item.first_name.charAt(1) :
             item.first_name && item.first_name.length > 2 ? item.first_name.charAt(0)+item.first_name.charAt(0): 'NA') : 'NA';
+
+            return {
+                name: name,
+                initials: initials
+            };
         }
 
         dialogsService.getDialogs().then((dialogs) => {            
@@ -124,11 +138,12 @@ let HomeComponent = {
             if (dialogs != null){
 
                 var content = '';
-                if (dialogs.chats && dialogs.chats.length > 1) {
+                if (dialogs.chats && dialogs.chats.length > 0) {
                     
                     /// add channels
                     dialogs.chats.forEach(item => {                                    
-                        content += `<div class="dialog-item" data-type="${item._}" data-id="${item.id}" data-hash="${item.access_hash}">
+                        content += `<div class="dialog-item" data-type="${item._}" data-title="${item.title}" 
+                            data-id="${item.id}" data-hash="${item.access_hash}">
                             <div class="dialog-item-ava">                                         
                             </div>
                             <div class="dialog-item-content">
@@ -139,21 +154,28 @@ let HomeComponent = {
                     });
                     
                     content += `<div class="dialog-item-sep"><div>`;                    
-                }                                
+                }                                        
 
-                if (dialogs.users) {
-                    //// add users
-                    dialogs.users.forEach(item => {           
-                        var initials = getInitials(item);
-                        content += `<div class="dialog-item" data-type="user" data-id="${item.id}" 
-                            data-title="${item.first_name}${item.last_name ? ' ' + item.last_name : ''}">
-                            <div class="dialog-item-ava">            
-                                <div class="numberCircle" style="background-color: ${getRandomColor()}">${initials.toUpperCase()}</div>
-                            </div>
-                            <div class="dialog-item-content">
-                                <div><b>${item.first_name}${item.last_name ? ' ' + item.last_name : ''}</b></div>
-                            </div>
-                        </div>`;                        
+                if (dialogs.dialogs && dialogs.dialogs.length > 0) {                    
+                    //// add dialogs
+                    dialogs.dialogs.forEach(item => {
+                        var peerId = item.peer.user_id || item.peer.channel_id;           
+                        
+                        var usr = dialogs.users.find(f => f.id == peerId);
+
+                        if (usr) {
+                            var info = getDialogsInfo(usr);                        
+                            
+                            content += `<div class="dialog-item" data-type="${item.peer._}" data-id="${peerId}" 
+                                data-title="${info.name}">
+                                <div class="dialog-item-ava">            
+                                    <div class="numberCircle" style="background-color: ${getRandomColor()}">${info.initials.toUpperCase()}</div>
+                                </div>
+                                <div class="dialog-item-content">
+                                    <div><b>${info.name}</b></div>
+                                </div>
+                            </div>`;  
+                        }                      
                     });
                 }
 
@@ -173,7 +195,8 @@ let HomeComponent = {
                     var type = this.getAttribute('data-type');                                        
                     var hash = this.getAttribute('data-hash');
                     var title = this.getAttribute('data-title');                    
-                    HomeComponent.getMessages(id, hash, type == 'channel');
+                    console.log('open message ', `id: ${id}, type:${type}, title:${title}`);
+                    HomeComponent.getMessages(id, hash, type == "peerChannel" || type == "channel");
 
                     //// set current dialog as selected
                     var elements = document.querySelectorAll('.dialog-item');

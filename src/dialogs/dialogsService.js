@@ -51,11 +51,17 @@ export default class DialogsService {
                 };
             }
         }
-        return {
+        if (!isChannel) return {
             _: 'inputPeerUser',
             user_id: peerId,
             access_hash: hashId || 0
         };
+        
+        return {
+            _: 'inputPeerChannel',
+            channel_id: peerId,
+            access_hash: hashId || 0
+        }; 
     }
 
     getMessages(peerId, hashId, isChannel) {
@@ -70,18 +76,10 @@ export default class DialogsService {
             add_offset: 0,
             limit: 0
         };        
-
-        // if (this.messages != null) {
-        //     var item = this.messages.find((item) => item.id == peerId);
-        //     if (item != null) {
-        //         deferred.resolve(item);
-        //     }
-        // }        
-
+       
         AuthService.mtpApiManager.invokeApi('messages.getHistory', request, {
             timeout: 4000
-        }).then(function (result) {
-            ////self.messages.push(result);
+        }).then(function (result) {            
             console.log('get MESSAGES: ', result);
             deferred.resolve(result);
         }, (error) => {

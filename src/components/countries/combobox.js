@@ -234,9 +234,17 @@ export default class Autocomplete {
         this.input.setAttribute('onClick', 'this.setSelectionRange(0, this.value.length)');
         this.input.classList.add(CLASSES.INPUT);
 
-        window.requestAnimationFrame(() => {
-            this.container.appendChild(this.input);
+        var spanHelper = document.createElement("span");
+        spanHelper.innerHTML = "Country";
+        spanHelper.classList.add("floating-label");
+
+        window.requestAnimationFrame(() => {            
+            this.container.appendChild(this.input);                        
         });
+
+        setTimeout(() => {
+            this.container.appendChild(spanHelper);
+        }, 900);        
     }
 
     outputResultsList(resultsId) {

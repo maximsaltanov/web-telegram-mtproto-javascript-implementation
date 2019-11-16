@@ -1,6 +1,7 @@
 import AuthServiceSingleton from "../auth/authService";
 import Autocomplete from "../components/countries/combobox";
 import { Countries } from "../components/countries/combobox";
+import Utils from "../lib/utils";
 
 const AuthService = new AuthServiceSingleton().getInstance();
 
@@ -41,7 +42,8 @@ let SigninComponent = {
                 </div>
             </div>  
             <div class="form_input">
-                <input id="tboxPhoneNumber" maxlength="12" name="tboxPhoneNumber" type="text" placeholder="Phone Number" required>
+                <input id="tboxPhoneNumber" maxlength="12" name="tboxPhoneNumber" onclick="this.setSelectionRange(0, this.value.length)" type="text" placeholder="Phone Number" required>
+                <span class="floating-label">Phone Number</span>
             </div>
             <div class="keep_me_in">                
                 <p>
@@ -51,17 +53,22 @@ let SigninComponent = {
             </div>
             <div id="form_submit" class="form_submit">
                 <input id="btnSubmitSigninForm" type="button" value="NEXT" style="display: none">
+                <input id="btnSubmitSigninFormWait" type="button" value="PLEASE WAIT..." style="display: none">
             </div>                        
         </form>
         <form id="form_2" novalidate class="form_container" autocomplete="off">        
-            <img class="code" src="src/images/t_monkey1.png" alt="enter code">                
-            <h3><span id="lblPhoneNumber"></span></h3>     
+            <img id="imgValidCode" class="code" src="src/images/t_monkey1.png" alt="enter code">                              
+            <h3>
+                <span id="lblPhoneNumber"></span>
+                <img id="btnEditPhone" class="editPhone" src="src/images/edit_1x.png" style="display: none" />
+            </h3>     
             <p class="form_descr width-160">We have sent you an SMS with the code.</p>             
             <div class="form_input">
-                <input id="tboxCode" name="tboxCode" maxlength="12" type="text" placeholder="Code" required>
+                <input id="tboxCode" name="tboxCode" maxlength="12" type="text" placeholder="Code" onclick="this.setSelectionRange(0, this.value.length)">
+                <span class="floating-label">Code</span>
             </div>          
             <div class="form_submit">
-                <input id="btnSubmitCodeForm" type="button" value="NEXT" style="display: none">
+                <input id="btnSubmitCodeForm" type="button" value="NEXT" style="display: none">                
             </div>            
         </form>
         <form id="form_3" novalidate class="form_container" autocomplete="off">        
@@ -69,13 +76,15 @@ let SigninComponent = {
             <h3>Your Name</h3>     
             <p class="form_descr width-160">Enter your name and add a profile picture.</p>             
             <div class="form_input">
-                <input id="tboxFirstname" name="tboxFirstname" type="text" placeholder="Name" required>
+                <input id="tboxFirstname" name="tboxFirstname" maxlength="30" type="text" placeholder="Name" required onclick="this.setSelectionRange(0, this.value.length)">
+                <span class="floating-label">Name</span>
             </div>          
             <div class="form_input">
-                <input id="tboxLastname" name="tboxLastname" type="text" placeholder="Last Name">
+                <input id="tboxLastname" name="tboxLastname" maxlength="30" type="text" placeholder="Last Name" onclick="this.setSelectionRange(0, this.value.length)">
+                <span class="floating-label">Last Name (optional)</span>
             </div>          
             <div class="form_submit">
-                <input id="btnSubmitName" type="button" value="START MESSAGING">
+                <input id="btnSubmitName" type="button" value="START MESSAGING" style="display: none">
             </div>            
         </form>
         <form id="form_4" novalidate class="form_container" autocomplete="off">        
@@ -83,23 +92,21 @@ let SigninComponent = {
             <h3>Enter a Password</h3>     
             <p class="form_descr width-160">Your account is protected with an additional password.</p>             
             <div class="form_input">
-                <input id="tboxPassword" name="tboxPassword" type="password" placeholder="Password" required>
+                <input id="tboxPassword" name="tboxPassword" type="password" maxlength="30" placeholder="Password" required>
+                <span class="floating-label">Password</span>
             </div>          
             <div class="form_submit">
-                <input id="btnSubmitPassword" type="button" value="NEXT">
+                <input id="btnSubmitPassword" type="button" value="NEXT" style="display: none">
             </div>            
         </form>        
     </div>
-        `;
-        //<img class="logo" src="src/images/t_monkey2.png" alt="invalid code">    
+        `;        
     }
     , after_render: async () => {
-
+    
         var btnSubmitSigninForm, tboxPhoneNumber, tboxCountry;
         var btnSubmitCodeForm, tboxCode;
-
-        //// show 1st form
-        SigninComponent.showForm(1);
+        var btnSubmitName, tboxFirstname, tboxLastname;        
 
         function validateForm(formName) {
             switch (formName) {
@@ -108,13 +115,26 @@ let SigninComponent = {
                     btnSubmitSigninForm.style.display = form1Valid ? 'inline' : 'none';
                     break;
                 case "form2":
-                    var form2Valid = tboxCode.value.trim().length >= 4;
-                    btnSubmitCodeForm.style.display = form2Valid ? 'inline' : 'none';
+                    var form2CodeValid = tboxCode.checkValidity();
+                    var form2Valid = tboxCode.value.trim().length >= 4 && form2CodeValid;
+                    btnSubmitCodeForm.style.display = form2Valid ? 'inline' : 'none';                    
+                    document.getElementById("imgValidCode").src = form2CodeValid ? 'src/images/t_monkey1.png' : 'src/images/t_monkey2.png';
+                    document.getElementById("btnEditPhone").style.display = form2CodeValid ? 'none' : 'inline';
+                    break;
+                case "form3":
+                    var form3Valid = tboxFirstname.value.trim().length >= 1;
+                    btnSubmitName.style.display = form3Valid ? 'inline' : 'none';   
+                    break;
+                case "form4":
+                    var form4Valid = tboxPassword.value.trim().length >= 4;
+                    btnSubmitPassword.style.display = form4Valid ? 'inline' : 'none';   
                     break;
             }
         }
 
+        //// global input key up handler
         function onKeyUpEvent(event) {
+            event.target.setCustomValidity('');
             switch (event.target.getAttribute('id')) {
                 case 'cbxCountries-input':
                 case 'tboxPhoneNumber':
@@ -123,12 +143,16 @@ let SigninComponent = {
                 case 'tboxCode':
                     validateForm('form2');
                     break;
+                case 'tboxFirstname':
+                case 'tboxLastname':
+                    validateForm('form3');
+                case "tboxPassword":
+                    validateForm('form4');
+                    break;
             }
         }
 
-        //// init sign in form
-
-
+        //// FORM 1
         //// init combo
         function createAutocomplete(node) {
             return new Autocomplete(node, (val) => {
@@ -151,6 +175,12 @@ let SigninComponent = {
         tboxPhoneNumber = document.getElementById("tboxPhoneNumber");
         tboxCountry = null;
 
+        //// set regexes
+        Utils.setInputFilter(tboxPhoneNumber, function(value) {
+            return /^\+\d*$/.test(value); 
+        });        
+
+        //// fill countries
         const autocompletes = document.querySelectorAll(".autocomplete");
         autocompletes.forEach((selectElement) => {
             fillSelectElement(selectElement);
@@ -158,6 +188,10 @@ let SigninComponent = {
 
             setTimeout(() => {
                 tboxCountry = document.getElementById('cbxCountries-input');    
+
+                Utils.setInputFilter(tboxCountry, function(value) {
+                    return /^[A-Za-z -]+$/.test(value); 
+                });
             }, 500);            
         });        
 
@@ -171,20 +205,22 @@ let SigninComponent = {
                 
                 tboxCountry.value = countryName;
                 tboxPhoneNumber.value = phonePrefix;
-
+        
                 tboxCountry.addEventListener('keyup', onKeyUpEvent);
             }
         });
 
         //// set events
         tboxPhoneNumber.addEventListener('keyup', onKeyUpEvent);
-
-        //// FORM 1 
+        
         btnSubmitSigninForm.addEventListener("click", () => {
 
             let countryName = document.getElementById('cbxCountries-input').value;
             let country = Countries.find((item) => item.name == countryName);
             let phone = tboxPhoneNumber.value;
+
+            btnSubmitSigninForm.style.display = 'none';
+            btnSubmitSigninFormWait.style.display = 'inline';
 
             AuthService.sendCode(country.code, phone).then((data) => {
                 SigninComponent.showForm(2);
@@ -208,24 +244,33 @@ let SigninComponent = {
                     }
                 }
                 else alert(`Error ${error.error_code}, Message ${error.error_message}`);
+            }).finally(() =>{ 
+                btnSubmitSigninForm.style.display = 'inline';
+                btnSubmitSigninFormWait.style.display = 'none';
             });
+
+            // setTimeout(()=> {
+            //     btnSubmitSigninForm.style.display = 'inline';
+            //     btnSubmitSigninFormWait.style.display = 'none';
+            // }, 4000);
 
             return false;
         });
 
         //// FORM 2            
         var tboxCode = document.getElementById("tboxCode");
+
+        //// set regexes
+        Utils.setInputFilter(tboxCode, function(value) {
+            return /^\d*$/.test(value); 
+        });  
+
         tboxCode.addEventListener('keyup', onKeyUpEvent);
 
         var btnSubmitCodeForm = document.getElementById("btnSubmitCodeForm");
         btnSubmitCodeForm.addEventListener("click", () => {
             let code = tboxCode.value;
-
-            // var error = {
-            //     code: 400,
-            //     type: 'PHONE_NUMBER_UNOCCUPIED'
-            // };                
-
+            
             AuthService.signIn(code).then(() => {
                 location = '/#/';
                 return false;
@@ -235,11 +280,10 @@ let SigninComponent = {
 
                 if (error.error_code == 400) {
                     switch (error.error_message) {
-                        case 'PHONE_CODE_INVALID':
-                            alert('Invalid SMS code was sent.');
-                            break;
+                        case 'PHONE_CODE_INVALID':                            
                         case 'PHONE_CODE_EXPIRED':
-                            alert('SMS expired.');
+                            tboxCode.setCustomValidity("Invalid field.");
+                            validateForm('form2');                            
                             break;
                         case 'PHONE_NUMBER_BANNED':
                             alert('The provided phone number is banned from telegram.');
@@ -253,15 +297,32 @@ let SigninComponent = {
                     }
                 }
 
-            });
+            });            
 
             return false;
         });
 
-        document.getElementById("btnSubmitName").addEventListener("click", () => {
+        //// FORM 3
+        tboxFirstname = document.getElementById("tboxFirstname");
+        tboxLastname = document.getElementById("tboxLastname");
 
-            let firstname = document.getElementById("tboxFirstname").value;
-            let lastname = document.getElementById("tboxLastname").value;
+        tboxFirstname.addEventListener('keyup', onKeyUpEvent);
+        tboxLastname.addEventListener('keyup', onKeyUpEvent);
+
+        btnSubmitName = document.getElementById("btnSubmitName");
+
+        //// set regexes
+        Utils.setInputFilter(tboxFirstname, function(value) {
+            return /^[ A-Za-z-`']+$/.test(value); 
+        });  
+        Utils.setInputFilter(tboxLastname, function(value) {
+            return /^[ A-Za-z -`']+$/.test(value); 
+        }); 
+
+        btnSubmitName.addEventListener("click", () => {
+
+            let firstname = tboxFirstname.value;
+            let lastname = tboxLastname.value;
 
             AuthService.signUp(firstname, lastname).then(() => {
                 location = '/#/';
@@ -292,24 +353,32 @@ let SigninComponent = {
             return false;
         });
 
-        document.getElementById("btnSubmitPassword").addEventListener("click", () => {
+        //// FORM 4
+        var tboxPassword = document.getElementById("tboxPassword");
+        var btnSubmitPassword = document.getElementById("btnSubmitPassword");
+
+        tboxPassword.addEventListener('keyup', onKeyUpEvent);
+
+        btnSubmitPassword.addEventListener("click", () => {
             
-            ///let password = document.getElementById("tboxPassword").value;
+            let password = tboxPassword.value;
 
             alert('Logging into accounts with two-factor authentication enabled is currently not possible. Please try later...');
 
             // AuthService.checkPassword(password).then(() => {
-            //     location = '/#/';
+            //     //location = '/#/';
             //     return false;
             // }, (error) => {
 
             //     console.log(error);
             //     alert(error.error_message);
-
             // });
 
             return false;
         });
+
+        //// show 1st form
+        SigninComponent.showForm(1);
     },
     showForm: (id) => {
 
