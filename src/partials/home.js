@@ -10,7 +10,7 @@ let HomeComponent = {
 
     preRender: async () => {
         console.log('home pre render');
-        
+
         user = AuthService.getUser();
         console.log(user);
 
@@ -26,8 +26,8 @@ let HomeComponent = {
     },
     render: () => {
 
-        console.log('home render');                
-        
+        console.log('home render');
+
         return `        
         <div id="main_container">
             <div class="column-1">
@@ -50,60 +50,60 @@ let HomeComponent = {
             </div>
             <div id="preloader" class="preloader"><img src="src/images/preloader.gif"></div>
         </div>
-        `;      
+        `;
     }
     , after_render: async () => {
-        console.log('home after render');        
+        console.log('home after render');
 
         //// show progress        
         HomeComponent.showPreloader();
-        
+
         setTimeout(() => {
-            HomeComponent.getDialogs();    
+            HomeComponent.getDialogs();
         }, 3000);
-        
+
     },
     clearContainer: (container) => {
         while (container.firstChild) {
-            container.removeChild(container.firstChild);        
-        }      
+            container.removeChild(container.firstChild);
+        }
     },
     showPreloader: (show = true) => {
-        document.getElementById('preloader').style.display = !show ? 'none' : 'inline';        
-    },    
-    getMessages: (peerId, hashId, isChannel) => {                
+        document.getElementById('preloader').style.display = !show ? 'none' : 'inline';
+    },
+    getMessages: (peerId, hashId, isChannel) => {
 
         var messagesContainer = document.getElementById('messages-container');
 
         dialogsService.getMessages(peerId, hashId, isChannel).then((data) => {
-            if (data && data.messages.length > 0){
+            if (data && data.messages.length > 0) {
                 var content = '';
 
-                data.messages.slice().reverse().forEach(function(item) {                
-                    
+                data.messages.slice().reverse().forEach(function (item) {
+
                     if (item.message) {
                         var date = new Date(+item.date);
                         var hour = date.getHours();
                         var mins = date.getMinutes();
                         var time = (hour > 9 ? hour : '0' + hour) + ":" + (mins > 9 ? mins : '0' + mins);
-                        
-                        var className = isChannel || +peerId < 0 ? 'message-item-center' : 
+
+                        var className = isChannel || +peerId < 0 ? 'message-item-center' :
                             (item.from_id == user.id ? 'message-item-right' : 'message-item-left');
                         content += `<div class="${className}">${item.message}<span class="time">${time}</span></div><div style="clear: both;"></div>`;
                     }
                 });
-                                                
+
                 HomeComponent.clearContainer(messagesContainer);
-                var messagesItemsDiv = document.createElement("div");                 
+                var messagesItemsDiv = document.createElement("div");
                 messagesItemsDiv.innerHTML = content;
-                messagesContainer.appendChild(messagesItemsDiv);            
-                
+                messagesContainer.appendChild(messagesItemsDiv);
+
                 messagesContainer.scrollTop = messagesContainer.scrollHeight;
             }
 
             document.getElementById('footerColumn2').style.display = 'block';
         }, (error) => {
-            alert(error.error_message);            
+            alert(error.error_message);
             HomeComponent.clearContainer(messagesContainer);
         }).finally(() => HomeComponent.showPreloader(false));
     },
@@ -113,19 +113,19 @@ let HomeComponent = {
             var letters = '0123456789ABCDEF';
             var color = '#';
             for (var i = 0; i < 6; i++) {
-              color += letters[Math.floor(Math.random() * 16)];
+                color += letters[Math.floor(Math.random() * 16)];
             }
             return color;
         }
-        
-        var dialogsContainer = document.getElementById('dialogs-container');        
+
+        var dialogsContainer = document.getElementById('dialogs-container');
         HomeComponent.clearContainer(dialogsContainer);
 
-        function getDialogsInfo(item){                        
+        function getDialogsInfo(item) {
             var name = `${item.first_name ? item.first_name : ''} ${item.last_name ? ' ' + item.last_name : ''}`;
-            var initials = item.last_name || item.first_name ? (item.last_name && item.first_name ? item.first_name.charAt(0) + item.last_name.charAt(0) : 
-            item.first_name && item.first_name.length > 2 ? item.first_name.charAt(0) + item.first_name.charAt(1) :
-            item.first_name && item.first_name.length > 2 ? item.first_name.charAt(0)+item.first_name.charAt(0): 'NA') : 'NA';
+            var initials = item.last_name || item.first_name ? (item.last_name && item.first_name ? item.first_name.charAt(0) + item.last_name.charAt(0) :
+                item.first_name && item.first_name.length > 2 ? item.first_name.charAt(0) + item.first_name.charAt(1) :
+                    item.first_name && item.first_name.length > 2 ? item.first_name.charAt(0) + item.first_name.charAt(0) : 'NA') : 'NA';
 
             return {
                 name: name,
@@ -133,15 +133,15 @@ let HomeComponent = {
             };
         }
 
-        dialogsService.getDialogs().then((dialogs) => {            
+        dialogsService.getDialogs().then((dialogs) => {
 
-            if (dialogs != null){
+            if (dialogs != null) {
 
                 var content = '';
                 if (dialogs.chats && dialogs.chats.length > 0) {
-                    
+
                     /// add channels
-                    dialogs.chats.forEach(item => {                                    
+                    dialogs.chats.forEach(item => {
                         content += `<div class="dialog-item" data-type="${item._}" data-title="${item.title}" 
                             data-id="${item.id}" data-hash="${item.access_hash}">
                             <div class="dialog-item-ava">                                         
@@ -150,58 +150,79 @@ let HomeComponent = {
                                 <div><b>${item.title}</b></div>                                
                             </div>
                         </div>`;
-                        
                     });
-                    
-                    content += `<div class="dialog-item-sep"><div>`;                    
-                }                                        
 
-                if (dialogs.dialogs && dialogs.dialogs.length > 0) {                    
+                    content += `<div class="dialog-item-sep"><div>`;
+                }
+
+                //var locations = [];
+                if (dialogs.dialogs && dialogs.dialogs.length > 0) {
                     //// add dialogs
                     dialogs.dialogs.forEach(item => {
-                        var peerId = item.peer.user_id || item.peer.channel_id;           
-                        
+
+                        var peerId = item.peer.user_id || item.peer.channel_id;
+
                         var usr = dialogs.users.find(f => f.id == peerId);
 
                         if (usr) {
-                            var info = getDialogsInfo(usr);                        
-                            
-                            content += `<div class="dialog-item" data-type="${item.peer._}" data-id="${peerId}" 
+                            var info = getDialogsInfo(usr);
+
+                            if (usr.photo && usr.photo.photo_small) {
+                                // locations.push({
+                                //     peerId: peerId,
+                                //     location: usr.photo.photo_small
+                                // });
+
+                                content += `<div class="dialog-item" data-type="${item.peer._}" data-id="${peerId}" 
                                 data-title="${info.name}">
-                                <div class="dialog-item-ava">            
-                                    <div class="numberCircle" style="background-color: ${getRandomColor()}">${info.initials.toUpperCase()}</div>
+                                    <div class="dialog-item-ava">      
+                                        <img id="img-dialog-${peerId}" style="width: 40px; height: 40px">                                              
+                                    </div>
+                                    <div class="dialog-item-content">
+                                        <div><b>${info.name}</b></div>
+                                    </div>
+                                </div>`;
+                            }
+                            else {
+                                content += `<div class="dialog-item" data-type="${item.peer._}" data-id="${peerId}" 
+                                data-title="${info.name}">
+                                    <div class="dialog-item-ava">      
+                                <div class="numberCircle" style="background-color: ${getRandomColor()}">${info.initials.toUpperCase()}</div>                                         
                                 </div>
                                 <div class="dialog-item-content">
                                     <div><b>${info.name}</b></div>
                                 </div>
-                            </div>`;  
-                        }                      
+                            </div>`;
+                            }
+                        }
                     });
                 }
 
-                if (content != ''){
-                    var dialogItemsDiv = document.createElement("div");                        
+                if (content != '') {
+                    var dialogItemsDiv = document.createElement("div");
                     dialogItemsDiv.innerHTML = content;
-                    dialogsContainer.appendChild(dialogItemsDiv);                    
-                }                
+                    dialogsContainer.appendChild(dialogItemsDiv);
+                }
 
-                function selectDialog() {                    
-                    
+                // dialogsService.getPhotoLink(locations[0]);
+
+                function selectDialog() {
+
                     //// show progress                     
                     HomeComponent.showPreloader();
 
                     /// get dialog parameters
-                    var id = this.getAttribute('data-id');                    
-                    var type = this.getAttribute('data-type');                                        
+                    var id = this.getAttribute('data-id');
+                    var type = this.getAttribute('data-type');
                     var hash = this.getAttribute('data-hash');
-                    var title = this.getAttribute('data-title');                    
+                    var title = this.getAttribute('data-title');
                     console.log('open message ', `id: ${id}, type:${type}, title:${title}`);
                     HomeComponent.getMessages(id, hash, type == "peerChannel" || type == "channel");
 
                     //// set current dialog as selected
                     var elements = document.querySelectorAll('.dialog-item');
-                    elements.forEach((el) => el.classList.remove('selected'));                    
-                    this.classList.add('selected');                    
+                    elements.forEach((el) => el.classList.remove('selected'));
+                    this.classList.add('selected');
 
                     //// set current dialog name in the header
                     var headerColumn2 = document.getElementById('headerColumn2');
@@ -213,24 +234,25 @@ let HomeComponent = {
                                 <div><b>${title}</b></div>                        
                             </div>
                         </div>
-                    `;                    
+                    `;
                 }
 
-                document.getElementsByClassName("dialog-item").forEach(function(element) {
+                document.getElementsByClassName("dialog-item").forEach(function (element) {
                     element.addEventListener('click', selectDialog);
                 });
-            }        
-            
-            document.getElementById('headerColumn1').style.display = 'block';                        
-            document.getElementById('emptyMessageContainer').style.display = 'block';                 
+            }
 
-            HomeComponent.showPreloader(false);
+            document.getElementById('headerColumn1').style.display = 'block';
+            document.getElementById('emptyMessageContainer').style.display = 'block';
 
         }, (error) => {
             console.log(error);
-
-            HomeComponent.showPreloader(false);
-        });              
+            if (error.error_code == 401 && error.error_message == "SESSION_PASSWORD_NEEDED") {
+                var redirectUrl = '/#/signin';
+                location = redirectUrl;
+            }
+            else alert(error);
+        }).finally(() => HomeComponent.showPreloader(false));
     }
 };
 

@@ -42,7 +42,7 @@ let SigninComponent = {
                 </div>
             </div>  
             <div class="form_input">
-                <input id="tboxPhoneNumber" maxlength="12" name="tboxPhoneNumber" onclick="this.setSelectionRange(0, this.value.length)" type="text" placeholder="Phone Number" required>
+                <input id="tboxPhoneNumber" maxlength="12" name="tboxPhoneNumber" type="text" placeholder="Phone Number" required>
                 <span class="floating-label">Phone Number</span>
             </div>
             <div class="keep_me_in">                
@@ -290,11 +290,11 @@ let SigninComponent = {
                             break;
                         case 'PHONE_NUMBER_UNOCCUPIED':
                             SigninComponent.showForm(3);
-                            break;
-                        case 'SESSION_PASSWORD_NEEDED':
-                            SigninComponent.showForm(4);
-                            break;
+                            break;                        
                     }
+                }
+                else if (error.error_code == 401 && error.error_message == "SESSION_PASSWORD_NEEDED"){
+                    SigninComponent.showForm(4);
                 }
 
             });            
@@ -361,18 +361,15 @@ let SigninComponent = {
 
         btnSubmitPassword.addEventListener("click", () => {
             
-            let password = tboxPassword.value;
+            let password = tboxPassword.value;            
 
-            alert('Logging into accounts with two-factor authentication enabled is currently not possible. Please try later...');
-
-            // AuthService.checkPassword(password).then(() => {
-            //     //location = '/#/';
-            //     return false;
-            // }, (error) => {
-
-            //     console.log(error);
-            //     alert(error.error_message);
-            // });
+            AuthService.checkPassword(password).then(() => {
+                location = '/#/';
+                // return false;
+            }, (error) => {
+                console.log(error);
+                alert(error.error_message);
+            });
 
             return false;
         });

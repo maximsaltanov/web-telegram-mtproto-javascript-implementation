@@ -32,6 +32,31 @@ export default class DialogsService {
         return deferred.promise;
     }
 
+    getPhotoLink(location){
+
+        var deferred = $q.defer();
+
+        AuthService.mtpApiManager.invokeApi('upload.getFile', {
+            location: location,
+            offset: 0,
+            limit: 1024 * 1024
+          }).then(function (result) {            
+            console.log('get FILE: ', result);
+            deferred.resolve(result);
+        }, (error) => {
+            console.log('get FILE error: ', error);
+            deferred.reject(error);
+        });
+        
+            // downloadSmallFile(photo_small).then(function (blob) {
+                
+            //     imgEl.prependTo(element).attr('src', FileManager.getUrl(blob, 'image/jpeg'))
+            //   }, function (e) {
+            //     console.log('Download image failed', e, peer.photo.photo_small, element[0])
+            //   });        
+        return deferred.promise;
+    }
+
     _getInputPeerByID(peerId, hashId, isChannel) {
         if (!peerId) {
             return { _: 'inputPeerEmpty' };

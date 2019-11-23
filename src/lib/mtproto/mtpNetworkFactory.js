@@ -1111,13 +1111,14 @@ export function MtpNetworkerFactory() {
         ////console.log('Bad server salt', message);
         var sentMessage = this.sentMessages[message.bad_msg_id];
         if (!sentMessage || sentMessage.seq_no != message.bad_msg_seqno) {
-          ////console.log(message.bad_msg_id, message.bad_msg_seqno);
-          throw new Error('[MT] Bad server salt for invalid message');
+          ////console.log(message.bad_msg_id, message.bad_msg_seqno);          
+          throw new Error('[MT] Bad server salt for invalid message');          
         }
 
         this.applyServerSalt(message.new_server_salt);
         this.pushResend(message.bad_msg_id);
         this.ackMessage(messageID);
+        alert('Please refresh the page');
         break;
 
       case 'bad_msg_notification':

@@ -1,11 +1,13 @@
 import MtpAuthorizer from './mtpAuthorizer';
-import { bytesFromHex, bytesToHex } from './bin_utils';
+import { bytesFromHex, bytesToHex, bufferConcat } from './bin_utils';
 import { MtpNetworkerFactory } from './mtpNetworkFactory';
 import $q from 'q';
 import Storage from '../storageService';
+import CryptoWorker from './cryptoWorker';
 // import Utils from '../utils';
 
 const storage = new Storage();
+const cryptoWorker = new CryptoWorker();
 const mtpAuthorizer = new MtpAuthorizer();
 const mtpNetworkerFactory = new MtpNetworkerFactory();
 
@@ -125,12 +127,38 @@ export default function MtpApiManager() {
     return baseDcID || false;
   }
 
+  function makePasswordHash (password) {
+    var passwordUTF8 = unescape(encodeURIComponent(password));
+    var buffer = new ArrayBuffer(passwordUTF8.length);
+    var byteView = new Uint8Array(buffer);
+    for (var i = 0, len = passwordUTF8.length; i < len; i++) {
+      byteView[i] = passwordUTF8.charCodeAt(i);
+    }
+    
+    var serverSalt = null;
+    var ssk = `dc_${dcID}_server_salt`;
+    var serverSaltHex = storage.get(ssk);
+
+    if (serverSaltHex != null) {
+      serverSalt = bytesFromHex(serverSaltHex);
+    }
+    else  {
+      serverSaltHex = 'AAAAAAAAAAAAAAAA';
+      serverSalt = bytesFromHex(serverSaltHex);
+    }
+
+    buffer = bufferConcat(bufferConcat(serverSalt, byteView), serverSalt);
+
+    return cryptoWorker.sha256Hash(buffer);   
+  }
+
   return {
     getBaseDcID: getBaseDcID,
     getUserID: mtpGetUserID,
     invokeApi: mtpInvokeApi,
     getNetworker: mtpGetNetworker,
     setUserAuth: mtpSetUserAuth,
-    logOut: mtpLogOut
+    logOut: mtpLogOut,
+    makePasswordHash: makePasswordHash
   };
 };

@@ -13,12 +13,12 @@ module.exports = {
     path: Path.join(__dirname, '../build'),
     filename: 'js/[name].js'
   },
-  optimization: {
-    splitChunks: {
-      chunks: 'all',
-      name: false
-    }
-  },
+  // optimization: {
+  //   splitChunks: {
+  //     chunks: 'all',
+  //     name: false
+  //   }
+  // },
   plugins: [    
     // new webpack.ProvidePlugin({
     //   combo: Path.resolve(__dirname, '../src/components/countries/combobox.js')

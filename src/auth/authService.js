@@ -57,22 +57,22 @@ class AuthService {
         return deferred.promise;
     }    
 
-    // checkPassword(password) {
+    checkPassword(password) {
 
-    //     var deferred = $q.defer();
+        var deferred = $q.defer();
 
-    //     var passwordHash = this.mtpApiManager.makePasswordHash(password);
-                
-    //     this.mtpApiManager.invokeApi('auth.checkPassword', { password_hash: passwordHash }).then(() => { 
-    //         console.log('check password success');
-    //         deferred.resolve();
-    //     }, (error) => {
-    //         console.log('check password error', error);
-    //         deferred.reject(error);
-    //     });
+        this.mtpApiManager.makePasswordHash(password).then((passwordHash) => {            
+            this.mtpApiManager.invokeApi('auth.checkPassword', { password_hash: passwordHash }).then(() => { 
+                console.log('check password success');
+                deferred.resolve();
+            }, (error) => {
+                console.log('check password error', error);
+                deferred.reject(error);
+            });
+        });                        
 
-    //     return deferred.promise;
-    // }
+        return deferred.promise;
+    }
 
     cancelCode() {
         var self = this;

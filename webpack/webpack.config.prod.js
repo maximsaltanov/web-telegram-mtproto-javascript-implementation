@@ -8,6 +8,9 @@ module.exports = merge(common, {
   devtool: 'source-map',
   stats: 'errors-only',
   bail: true,
+  // optimization: {
+  //   minimize: false
+  // },
   output: {
     filename: 'js/[name].[chunkhash:8].js',
     chunkFilename: 'js/[name].[chunkhash:8].chunk.js'
